@@ -1,18 +1,32 @@
 {
   "name": "logscope",
   "version": "0.0.1",
-  "private": true,
   "description": "Zero-dependency, universal, library-first structured logging with scoped wide events.",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "",
+    "build": "tsdown",
     "typecheck": "tsc --build",
-    "clean": "",
-    "test": "",
-    "test:watch": "",
+    "clean": "rm -rf dist",
+    "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
+    "test:watch": "node --watch --experimental-strip-types --test 'src/**/*.test.ts'",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "tsdown": "^0.20.3"
   }
 }
