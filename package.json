@@ -1,0 +1,28 @@
+{
+  "name": "logscope",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Zero-dependency, universal, library-first structured logging with scoped wide events.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Littletonconnor/logscope.git"
+  },
+  "keywords": [],
+  "author": "Connor Littleton",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  }
+}
