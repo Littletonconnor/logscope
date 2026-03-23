@@ -423,13 +423,13 @@ The heart of the library. Implements the tree structure, sink dispatch, and publ
 
 ---
 
-## Phase 7: Configuration System
+## Phase 7: Configuration System ✅
 
 The `configure()` function wires the tree. Only called by app developers, never by library authors.
 
 ### `config.ts`
 
-- [ ] Define `Config<TSinkId, TFilterId>` interface (AD-8):
+- [x] Define `Config<TSinkId, TFilterId>` interface (AD-8):
   ```typescript
   interface Config<TSinkId extends string = string, TFilterId extends string = string> {
     sinks: Record<TSinkId, Sink>
@@ -439,7 +439,7 @@ The `configure()` function wires the tree. Only called by app developers, never 
     reset?: boolean // Allow reconfiguration (throws if already configured without this)
   }
   ```
-- [ ] Define `LoggerConfig<TSinkId, TFilterId>`:
+- [x] Define `LoggerConfig<TSinkId, TFilterId>`:
   ```typescript
   interface LoggerConfig<TSinkId, TFilterId> {
     category: string | readonly string[]
@@ -449,28 +449,28 @@ The `configure()` function wires the tree. Only called by app developers, never 
     parentSinks?: 'inherit' | 'override'
   }
   ```
-- [ ] Module-level state: `currentConfig`, `strongRefs: Set<LoggerImpl>`, `disposables`
-- [ ] `configure(config)` — async function:
+- [x] Module-level state: `currentConfig`, `strongRefs: Set<LoggerImpl>`, `disposables`
+- [x] `configure(config)` — async function:
   1. Throw `ConfigError` if already configured and `config.reset !== true`
   2. Call `reset()` to clean up previous state
   3. For each logger config: get/create LoggerImpl, push sinks/filters, add to strongRefs
   4. Detect duplicate categories → throw ConfigError
   5. If meta logger `["logscope", "meta"]` wasn't explicitly configured, add default console sink
   6. Register exit handlers (Node: `process.on("exit")`, browser: `addEventListener("pagehide")`)
-- [ ] `reset()` — clears sinks/filters from all loggers, disposes disposable sinks, clears strongRefs
-- [ ] `dispose()` — alias for reset() with disposable cleanup emphasis
+- [x] `reset()` — clears sinks/filters from all loggers, disposes disposable sinks, clears strongRefs
+- [x] `dispose()` — alias for reset() with disposable cleanup emphasis
 
 ### Tests (`config.test.ts`)
 
-- [ ] `configure()` wires sinks to the correct logger tree nodes
-- [ ] Hierarchical dispatch: child logs reach parent-configured sinks
-- [ ] `parentSinks: "override"` stops upward sink inheritance
-- [ ] `reset()` clears all state — loggers become silent again
-- [ ] Throws ConfigError on duplicate `configure()` without `reset: true`
-- [ ] `configure({ reset: true })` reconfigures successfully
-- [ ] Type-safe: sink/filter IDs in loggers must match declared sinks/filters (compile-time check)
-- [ ] Meta logger gets default console sink when not explicitly configured
-- [ ] Sink errors are caught and logged to meta logger (not propagated to caller)
+- [x] `configure()` wires sinks to the correct logger tree nodes
+- [x] Hierarchical dispatch: child logs reach parent-configured sinks
+- [x] `parentSinks: "override"` stops upward sink inheritance
+- [x] `reset()` clears all state — loggers become silent again
+- [x] Throws ConfigError on duplicate `configure()` without `reset: true`
+- [x] `configure({ reset: true })` reconfigures successfully
+- [x] Type-safe: sink/filter IDs in loggers must match declared sinks/filters (compile-time check)
+- [x] Meta logger gets default console sink when not explicitly configured
+- [x] Sink errors are caught and logged to meta logger (not propagated to caller)
 
 **Reference:** `~/oss/logtape/packages/logtape/src/config.ts`
 
@@ -711,7 +711,7 @@ Phase 3:  Sinks               ✅ Can output records (console, custom functions)
 Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
 Phase 5:  Formatters          ✅ Records become readable text, JSON, or colored output
 Phase 6:  Logger Core         ✅ createLogger(), child(), .with(), tree dispatch
-Phase 7:  Configuration       → configure() wires loggers to sinks
+Phase 7:  Configuration       ✅ configure() wires loggers to sinks
 Phase 8:  Scoped Wide Events  → scope(), .set(), .emit() accumulation pattern
 Phase 9:  Context System      → withContext(), implicit/explicit context
 Phase 10: Public API          → Clean exports, tree-shaking, bundle size

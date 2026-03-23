@@ -36,3 +36,7 @@ export type {
 // Logger
 export { createLogger } from './logger.ts'
 export type { Logger } from './logger.ts'
+
+// Config
+export { configure, reset, dispose, isConfigured, ConfigError } from './config.ts'
+export type { Config, LoggerConfig } from './config.ts'
