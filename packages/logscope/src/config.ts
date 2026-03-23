@@ -2,9 +2,11 @@ import type { LogLevel } from './level.ts'
 import type { LogRecord } from './record.ts'
 import type { Filter, FilterLike } from './filter.ts'
 import type { Sink } from './sink.ts'
+import type { ContextLocalStorage } from './context.ts'
 import { toFilter } from './filter.ts'
 import { LoggerImpl, strongRefs } from './logger.ts'
 import { getConsoleSink } from './sink.ts'
+import { setContextLocalStorage, clearContextLocalStorage } from './context.ts'
 
 // ---------------------------------------------------------------------------
 // Error type
@@ -56,6 +58,12 @@ export interface Config<
   filters?: Record<TFilterId, FilterLike>
   /** Logger configurations — wire categories to sinks and filters */
   loggers: LoggerConfig<TSinkId, TFilterId>[]
+  /**
+   * Optional async context storage for implicit context propagation.
+   * On Node.js, pass `new AsyncLocalStorage()` from `node:async_hooks`.
+   * When omitted, `withContext()` runs callbacks normally without context injection.
+   */
+  contextLocalStorage?: ContextLocalStorage<Record<string, unknown>>
   /** Allow reconfiguration when already configured (calls reset first) */
   reset?: boolean
 }
@@ -183,6 +191,9 @@ export async function configure<
     }
   }
 
+  // Wire context local storage for implicit context propagation
+  setContextLocalStorage(config.contextLocalStorage)
+
   configured = true
 }
 
@@ -211,6 +222,9 @@ export function reset(): void {
     }
   }
   disposables.length = 0
+
+  // Clear context local storage
+  clearContextLocalStorage()
 
   configured = false
 }

@@ -1,6 +1,7 @@
 import type { LogLevel } from './level.ts'
 import type { LogRecord } from './record.ts'
 import type { LoggerImpl } from './logger.ts'
+import { getImplicitContext } from './context.ts'
 
 // ---------------------------------------------------------------------------
 // Scope – accumulate-then-emit wide events (AD-9)
@@ -175,7 +176,10 @@ export function createScope(
       else if (hasWarn) level = 'warning'
 
       // Build final properties
+      // Priority: implicit context (lowest) < logger .with() < scope context (highest)
+      const implicitCtx = getImplicitContext()
       let properties: Record<string, unknown> = {
+        ...(implicitCtx ?? {}),
         ...(loggerProperties ?? {}),
         ...context,
         duration,

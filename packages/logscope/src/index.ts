@@ -44,3 +44,7 @@ export type { Config, LoggerConfig } from './config.ts'
 // Scope
 export { deepMerge } from './scope.ts'
 export type { Scope } from './scope.ts'
+
+// Context
+export { withContext } from './context.ts'
+export type { ContextLocalStorage } from './context.ts'
