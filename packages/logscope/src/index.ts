@@ -10,3 +10,7 @@ export type { LogLevel } from './level.ts'
 
 // Record
 export type { LogRecord } from './record.ts'
+
+// Filter
+export { getLevelFilter, toFilter } from './filter.ts'
+export type { Filter, FilterLike } from './filter.ts'
