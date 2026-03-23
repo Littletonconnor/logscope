@@ -587,29 +587,29 @@ Explicit and implicit context propagation. Two mechanisms, clear priority order.
 
 ---
 
-## Phase 10: Public API & Barrel Export
+## Phase 10: Public API & Barrel Export ✅
 
 Wire everything into a clean, tree-shakeable public API.
 
 ### `index.ts`
 
-- [ ] Export public types: `LogLevel`, `LogRecord`, `Filter`, `FilterLike`, `Sink`, `TextFormatter`, `Logger`, `Scope`, `Config`, `LoggerConfig`, `ContextLocalStorage`
-- [ ] Export public functions: `createLogger`, `configure`, `reset`, `dispose`, `getConsoleSink`, `withFilter`, `getTextFormatter`, `getJsonFormatter`, `getAnsiColorFormatter`, `withContext`, `toFilter`, `getLevelFilter`, `parseLogLevel`, `isLogLevel`, `compareLogLevel`, `getLogLevels`
-- [ ] Do NOT export: `LoggerImpl`, `LoggerCtx`, internal utilities
+- [x] Export public types: `LogLevel`, `LogRecord`, `Filter`, `FilterLike`, `Sink`, `TextFormatter`, `Logger`, `Scope`, `Config`, `LoggerConfig`, `ContextLocalStorage`
+- [x] Export public functions: `createLogger`, `configure`, `reset`, `dispose`, `getConsoleSink`, `withFilter`, `getTextFormatter`, `getJsonFormatter`, `getAnsiColorFormatter`, `withContext`, `toFilter`, `getLevelFilter`, `parseLogLevel`, `isLogLevel`, `compareLogLevel`, `getLogLevels`
+- [x] Do NOT export: `LoggerImpl`, `LoggerCtx`, internal utilities
 
 ### Package configuration
 
-- [ ] `"sideEffects": false` in package.json
-- [ ] `"files": ["dist", "README.md", "LICENSE"]` in package.json
-- [ ] Verify exports map is complete (ESM + CJS + types)
-- [ ] Verify tree-shaking: importing only `createLogger` should not pull in formatter code
+- [x] `"sideEffects": false` in package.json
+- [x] `"files": ["dist", "README.md", "LICENSE"]` in package.json
+- [x] Verify exports map is complete (ESM + CJS + types)
+- [x] Verify tree-shaking: importing only `createLogger` should not pull in formatter code
 
 ### Integration tests
 
-- [ ] Full end-to-end: `configure()` → `createLogger()` → `log.info()` → sink receives record
-- [ ] Library consumer simulation: import logscope, use without configuring → zero output
+- [x] Full end-to-end: `configure()` → `createLogger()` → `log.info()` → sink receives record
+- [x] Library consumer simulation: import logscope, use without configuring → zero output
 - [ ] Verify bundle size is reasonable (target: <10KB minified+gzipped for core)
-- [ ] Verify dual ESM/CJS output works
+- [x] Verify dual ESM/CJS output works
 
 ---
 
@@ -714,7 +714,7 @@ Phase 6:  Logger Core         ✅ createLogger(), child(), .with(), tree dispatc
 Phase 7:  Configuration       ✅ configure() wires loggers to sinks
 Phase 8:  Scoped Wide Events  ✅ scope(), .set(), .emit() accumulation pattern
 Phase 9:  Context System      ✅ withContext(), implicit/explicit context
-Phase 10: Public API          → Clean exports, tree-shaking, bundle size
+Phase 10: Public API          ✅ Clean exports, tree-shaking, bundle size
 Phase 11: Docs & Polish       → README, JSDoc, LICENSE, v0.1.0
 ```
 
