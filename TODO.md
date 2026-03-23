@@ -319,36 +319,36 @@ Output destinations. A sink is `(record: LogRecord) => void` — the simplest po
 
 ---
 
-## Phase 5: Formatters
+## Phase 5: Formatters ✅
 
 Transform LogRecords into human-readable or machine-readable output. Depend on `#util` for value inspection.
 
 ### `formatter.ts`
 
-- [ ] Define `TextFormatter` type: `(record: LogRecord) => string`
-- [ ] `getTextFormatter(options?)` — configurable text output:
+- [x] Define `TextFormatter` type: `(record: LogRecord) => string`
+- [x] `getTextFormatter(options?)` — configurable text output:
   - Default: `"2024-01-15T10:30:00.000Z [INFO] my-app · db: query executed {table: "users", ms: 42}"`
   - Options: timestamp format, level format, category separator, value renderer
-- [ ] `getJsonFormatter(options?)` — NDJSON output:
+- [x] `getJsonFormatter(options?)` — NDJSON output:
   - `{"@timestamp":"...","level":"INFO","message":"...","logger":"my-app.db","properties":{...}}`
   - Custom replacer for Error serialization (name, message, stack, cause)
-- [ ] `getAnsiColorFormatter(options?)` — colored terminal output using raw ANSI escape codes:
+- [x] `getAnsiColorFormatter(options?)` — colored terminal output using raw ANSI escape codes:
   - Level colors: trace=gray, debug=cyan, info=green, warning=yellow, error=red, fatal=red+bold
   - Timestamp in dim, category in bold
   - No color libraries — raw `\x1b[...m` codes
-- [ ] Internal `renderMessage(record)` helper — converts the interleaved message array into a string using `inspect()` for non-string values
+- [x] Internal `renderMessage(record)` helper — converts the interleaved message array into a string using `inspect()` for non-string values
 
 **DX decision:** Formatters are factories (`getTextFormatter()`) not classes. Users get a function, not an instance. This matches the Sink contract and makes composition trivial.
 
 ### Tests (`formatter.test.ts`)
 
-- [ ] Text formatter produces expected format with all components
-- [ ] Text formatter handles records with no message (properties-only)
-- [ ] Text formatter handles records with no properties
-- [ ] JSON formatter produces valid JSON Lines (one JSON object per line)
-- [ ] JSON formatter serializes Error objects with name/message/stack/cause
-- [ ] ANSI formatter includes color escape codes
-- [ ] `renderMessage` correctly interleaves string parts and inspected values
+- [x] Text formatter produces expected format with all components
+- [x] Text formatter handles records with no message (properties-only)
+- [x] Text formatter handles records with no properties
+- [x] JSON formatter produces valid JSON Lines (one JSON object per line)
+- [x] JSON formatter serializes Error objects with name/message/stack/cause
+- [x] ANSI formatter includes color escape codes
+- [x] `renderMessage` correctly interleaves string parts and inspected values
 
 **Reference:** `~/oss/logtape/packages/logtape/src/formatter.ts`, `~/oss/evlog/packages/evlog/src/logger.ts` (pretty printing)
 
@@ -709,7 +709,7 @@ Phase 1:  Levels & Records    → Foundation types exist
 Phase 2:  Filters             → Can filter records by level or custom predicate
 Phase 3:  Sinks               ✅ Can output records (console, custom functions)
 Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
-Phase 5:  Formatters          → Records become readable text, JSON, or colored output
+Phase 5:  Formatters          ✅ Records become readable text, JSON, or colored output
 Phase 6:  Logger Core         → createLogger(), child(), .with(), tree dispatch
 Phase 7:  Configuration       → configure() wires loggers to sinks
 Phase 8:  Scoped Wide Events  → scope(), .set(), .emit() accumulation pattern
