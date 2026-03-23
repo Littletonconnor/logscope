@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Zero-dependency, universal, library-first structured logging with scoped wide events.",
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -22,7 +23,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsdown",

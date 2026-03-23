@@ -42,7 +42,6 @@ export { configure, reset, dispose, isConfigured, ConfigError } from './config.t
 export type { Config, LoggerConfig } from './config.ts'
 
 // Scope
-export { deepMerge } from './scope.ts'
 export type { Scope } from './scope.ts'
 
 // Context
