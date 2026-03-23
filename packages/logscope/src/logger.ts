@@ -5,6 +5,7 @@ import type { Sink } from './sink.ts'
 import type { Scope } from './scope.ts'
 import { compareLogLevel } from './level.ts'
 import { createScope } from './scope.ts'
+import { getImplicitContext } from './context.ts'
 
 // ---------------------------------------------------------------------------
 // Globals – singleton root via Symbol.for (AD-1)
@@ -375,17 +376,23 @@ class LoggerCtx implements Logger {
   ): void {
     let message: readonly unknown[]
     let rawMessage: string
-    let mergedProps: Record<string, unknown>
+    let messageProps: Record<string, unknown>
 
     if (typeof messageOrProps === 'string') {
       message = [messageOrProps]
       rawMessage = messageOrProps
-      mergedProps = { ...this.properties, ...properties }
+      messageProps = properties ?? {}
     } else {
       message = []
       rawMessage = ''
-      mergedProps = { ...this.properties, ...messageOrProps }
+      messageProps = messageOrProps
     }
+
+    // Priority: implicit context (lowest) < explicit .with() < message props (highest)
+    const implicitCtx = getImplicitContext()
+    const mergedProps = implicitCtx
+      ? { ...implicitCtx, ...this.properties, ...messageProps }
+      : { ...this.properties, ...messageProps }
 
     const record: LogRecord = {
       category: this.impl.category,
@@ -495,17 +502,23 @@ class DefaultLogger implements Logger {
   ): void {
     let message: readonly unknown[]
     let rawMessage: string
-    let mergedProps: Record<string, unknown>
+    let messageProps: Record<string, unknown>
 
     if (typeof messageOrProps === 'string') {
       message = [messageOrProps]
       rawMessage = messageOrProps
-      mergedProps = properties ?? {}
+      messageProps = properties ?? {}
     } else {
       message = []
       rawMessage = ''
-      mergedProps = messageOrProps
+      messageProps = messageOrProps
     }
+
+    // Priority: implicit context (lowest) < message props (highest)
+    const implicitCtx = getImplicitContext()
+    const mergedProps = implicitCtx
+      ? { ...implicitCtx, ...messageProps }
+      : messageProps
 
     const record: LogRecord = {
       category: this.impl.category,
