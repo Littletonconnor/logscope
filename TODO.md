@@ -1,273 +1,739 @@
-# TODO - logscope Implementation Roadmap
+# logscope — Implementation Roadmap
 
-This document maps out all the work needed to build logscope from scratch. Each phase builds on the previous one. Work through phases in order—each phase should result in a working (if incomplete) library.
+A structured plan for building logscope from the ground up. Each phase builds on the previous one and ends with passing tests. The architecture section below captures key decisions learned from studying [logtape](~/oss/logtape) and [evlog](~/oss/evlog) so you can reference them during implementation without needing to re-read those codebases.
 
 ---
 
-## Phase 0: Project Setup
+## Architecture Decisions
 
-- [x] Set up TypeScript configuration (`tsconfig.json` at root + package level)
-- [x] Set up tsdown build configuration for the core package
-- [x] Set up ESLint + Prettier
-- [x] Create `packages/logscope/package.json` with proper exports map
-- [x] Create `packages/logscope/src/index.ts` barrel export
-- [x] Verify `pnpm build` and `pnpm test` work (even with empty source)
-- [x] Add a basic `node:test` test file to confirm testing works
+These decisions are informed by deep research into logtape and evlog. They define _how_ logscope should be built, not just _what_.
+
+### AD-1: Singleton Root via `Symbol.for`
+
+The root logger lives on `globalThis[Symbol.for("logscope.rootLogger")]`. This ensures a single logger tree even when multiple copies of logscope are loaded (e.g., different versions as transitive dependencies). This is how logtape avoids the "dual package hazard" — two copies share one tree.
+
+```typescript
+const ROOT_KEY = Symbol.for('logscope.rootLogger')
+// On first access, create the root. On subsequent access, return existing.
+```
+
+### AD-2: Three-Layer Logger Architecture
+
+Separate concerns into three classes/concepts (from logtape):
+
+| Layer        | Responsibility                                                                     | User-facing?        |
+| ------------ | ---------------------------------------------------------------------------------- | ------------------- |
+| `LoggerImpl` | Tree node. Holds sinks, filters, children, parent pointer. Walks the tree.         | No                  |
+| `Logger`     | Public interface. `info()`, `warn()`, `child()`, `scope()`, etc.                   | Yes                 |
+| `LoggerCtx`  | Wrapper created by `.with()`. Delegates to LoggerImpl but merges extra properties. | Yes (via `.with()`) |
+
+**Why this matters:** The Logger interface stays clean. LoggerImpl handles tree traversal, sink collection, and filter evaluation internally. LoggerCtx is a thin decorator that adds contextual properties without polluting the tree structure.
+
+**Key behavior:** `loggerCtx.child("db")` returns a new LoggerCtx wrapping the child LoggerImpl _with the same context properties_. Context flows down to children.
+
+### AD-3: "Silent When Unconfigured" Is Emergent
+
+There is no `enabled` flag, no null checks, no special "disabled logger" class. The mechanism:
+
+1. `createLogger()` always returns a valid Logger (creates tree nodes as needed)
+2. All log methods construct a LogRecord and call `emit()`
+3. `emit()` calls `getSinks(level)` which walks up the tree via generator
+4. If no sinks exist anywhere (nobody called `configure()`), the generator yields nothing
+5. The for-of loop over sinks executes zero iterations → zero output, zero errors
+
+This is the cleanest possible design. No branching. No special cases.
+
+### AD-4: WeakRef Children + StrongRef Configured Loggers
+
+From logtape — solve the memory leak problem in long-running processes:
+
+- Child loggers are stored as `WeakRef<LoggerImpl>` (if `WeakRef` is available)
+- When `configure()` attaches sinks/filters to a logger, it adds that logger to a `strongRefs: Set<LoggerImpl>` to prevent GC
+- When `reset()` is called, `strongRefs` is cleared → configured loggers become collectible again
+
+**Why both:** Without WeakRef, dynamically-created loggers (e.g., per-request `log.child(requestId)`) accumulate forever. Without strongRefs, configured loggers could be garbage-collected, losing their sinks.
+
+### AD-5: Generator-Based Sink Collection
+
+`*getSinks(level)` is a generator that walks up the tree yielding sinks:
+
+```typescript
+*getSinks(level: LogLevel): Iterable<Sink> {
+  // Early exit: if this node's lowestLevel is above the record's level, no sinks apply
+  if (this.lowestLevel !== null && compareLogLevel(level, this.lowestLevel) < 0) return
+  // Walk up: parent sinks first (unless overridden)
+  if (this.parent && this.parentSinks === 'inherit') {
+    yield* this.parent.getSinks(level)
+  }
+  // Then this node's own sinks
+  yield* this.sinks
+}
+```
+
+Parent sinks come first, then the node's own sinks. `parentSinks: "override"` stops the upward walk.
+
+### AD-6: Sink Error Handling via Meta Logger + Bypass Set
+
+When a sink throws during `emit()`:
+
+1. Catch the error
+2. Log it to the meta logger at category `["logscope", "meta"]`
+3. Add the failing sink to a `bypassSinks: Set<Sink>` passed to the meta logger's emit
+4. The meta logger skips any sink in `bypassSinks`, preventing infinite recursion
+
+If the meta logger isn't explicitly configured, `configure()` adds a default console sink to it automatically.
+
+### AD-7: Filter Inheritance Differs from Sink Inheritance
+
+Sinks bubble up (child → parent). Filters do NOT cascade the same way:
+
+- If a logger node has its _own_ filters, only those are checked
+- If a logger node has _no_ filters, it delegates to its parent
+- This means: a configured filter on a child completely replaces parent filtering for that branch
+
+This is intentional — you want to say "the db logger should only show warnings" without also applying the parent's debug filter.
+
+### AD-8: Type-Safe Config with Generics
+
+From logtape — `Config<TSinkId, TFilterId>` makes sink/filter references type-safe:
+
+```typescript
+configure({
+  sinks: { console: getConsoleSink(), file: getFileSink() },
+  filters: { noTrace: 'info' },
+  loggers: [
+    { category: 'app', sinks: ['console'], filters: ['noTrace'] },
+    //                          ^^^^^^^^^^            ^^^^^^^^^^^
+    //                          TypeScript knows these must be 'console' | 'file'
+  ],
+})
+```
+
+### AD-9: Scope Context Accumulation (from evlog)
+
+Wide event scopes use deep-merge where **new data wins over existing**:
+
+```typescript
+scope.set({ user: { id: '123' } })
+scope.set({ user: { plan: 'premium' } })
+// Result: { user: { id: '123', plan: 'premium' } }
+
+scope.set({ user: { id: '456' } })
+// Result: { user: { id: '456', plan: 'premium' } }  ← new id wins
+```
+
+evlog uses `deepDefaults(newData, existingContext)` where the first argument is the "base" (winner). We should implement a `deepMerge` utility with clear semantics.
+
+### AD-10: Level Naming — "warning" Internally, "warn" as Alias
+
+The level is `"warning"` (not `"warn"`) to match logtape and avoid ambiguity. The Logger interface provides both `.warn()` and `.warning()` as aliases for ergonomics (`.warn()` matches `console.warn`).
+
+### AD-11: Message Format — Array of Interleaved Parts
+
+From logtape — the `message` field on LogRecord is `readonly unknown[]`, not a string:
+
+```typescript
+// logger.info`Hello ${name}, you have ${count} items`
+// message: ["Hello ", "Alice", ", you have ", 42, " items"]
+//           ^string   ^value   ^string        ^value ^string
+```
+
+Always odd length. Strings at even indices, values at odd indices. This preserves structured values for formatters — console formatter uses `%o`, text formatter uses `inspect()`, JSON formatter uses `JSON.stringify()`.
+
+### AD-12: Cross-Runtime Value Inspection via Conditional Imports
+
+Use package.json `imports` field with the `#util` alias:
+
+```json
+{
+  "#util": {
+    "node": "./dist/util.node.js",
+    "bun": "./dist/util.node.js",
+    "deno": "./dist/util.deno.js",
+    "browser": "./dist/util.browser.js",
+    "default": "./dist/util.browser.js"
+  }
+}
+```
+
+Each file exports an `inspect(value): string` function. Node uses `util.inspect`, Deno uses `Deno.inspect`, browser/default uses `JSON.stringify`. Formatters import from `#util` and get the right implementation at build time.
+
+---
+
+## Phase 0: Project Setup ✅
+
+- [x] TypeScript configuration (root + package level)
+- [x] tsdown build configuration (ESM + CJS, platform neutral)
+- [x] ESLint + Prettier
+- [x] `packages/logscope/package.json` with exports map
+- [x] `packages/logscope/src/index.ts` barrel export
+- [x] `pnpm build` and `pnpm test` verified working
+- [x] Basic `node:test` test confirming infrastructure works
 
 ---
 
 ## Phase 1: Log Levels & Records
 
-The foundation. Define the data structures everything else builds on.
+The foundation types that everything else builds on. Small, self-contained, easy to get right first.
 
-- [ ] **`level.ts`** - Define `LogLevel` type (`trace | debug | info | warning | error | fatal`)
-- [ ] **`level.ts`** - Implement `parseLogLevel()`, `isLogLevel()`, `compareLogLevel()` utilities
-- [ ] **`record.ts`** - Define `LogRecord` interface (category, level, timestamp, message, properties)
-- [ ] **Tests** - Unit tests for level parsing, comparison, and type guards
+### `level.ts`
 
-**Reference**: `~/oss/logtape/packages/logtape/src/level.ts`, `~/oss/logtape/packages/logtape/src/record.ts`
+- [ ] Define `logLevels` const array: `["trace", "debug", "info", "warning", "error", "fatal"] as const`
+- [ ] Define `LogLevel` type from the array: `typeof logLevels[number]`
+- [ ] `compareLogLevel(a, b)` — returns negative/zero/positive (uses `indexOf`)
+- [ ] `parseLogLevel(str)` — case-insensitive string → LogLevel (throws on invalid)
+- [ ] `isLogLevel(str)` — type guard (case-sensitive, returns `str is LogLevel`)
+- [ ] `getLogLevels()` — returns a copy of the levels array
+
+**Design note:** Keep this module tiny (~40 lines). logtape's is 64 lines. No classes, just functions and types.
+
+### `record.ts`
+
+- [ ] Define `LogRecord` interface:
+  ```typescript
+  interface LogRecord {
+    readonly category: readonly string[]
+    readonly level: LogLevel
+    readonly timestamp: number // Date.now() milliseconds
+    readonly message: readonly unknown[] // Interleaved string/value array (see AD-11)
+    readonly rawMessage: string // Original message template
+    readonly properties: Record<string, unknown>
+  }
+  ```
+
+**Decision point:** Do we want `rawMessage` as `string | TemplateStringsArray` like logtape? Or just `string` for simplicity? Think about whether tagged template support (Phase 5) needs the TemplateStringsArray preserved.
+
+- Answer: Just make this a string
+
+### Tests (`level.test.ts`)
+
+- [ ] `compareLogLevel` returns correct ordering for all level pairs
+- [ ] `parseLogLevel` handles case-insensitive input ("INFO" → "info")
+- [ ] `parseLogLevel` throws on invalid input
+- [ ] `isLogLevel` returns true for valid levels, false for invalid
+- [ ] `getLogLevels` returns a copy (mutating doesn't affect original)
+
+**Reference:** `~/oss/logtape/packages/logtape/src/level.ts` (~64 lines)
 
 ---
 
 ## Phase 2: Filters
 
-Simple predicate functions that decide whether a log record should pass through.
+Simple predicate functions. This module is intentionally tiny — the power comes from composition.
 
-- [ ] **`filter.ts`** - Define `Filter` type: `(record: LogRecord) => boolean`
-- [ ] **`filter.ts`** - Define `FilterLike` union: `Filter | LogLevel | null`
-- [ ] **`filter.ts`** - Implement `toFilter()` to normalize FilterLike into Filter
-- [ ] **`filter.ts`** - Implement `getLevelFilter(level)` - hierarchical level-based filter
-- [ ] **Tests** - Level filter correctly includes higher-severity levels
-- [ ] **Tests** - Custom filter functions work as expected
+### `filter.ts`
 
-**Reference**: `~/oss/logtape/packages/logtape/src/filter.ts`
+- [ ] Define `Filter` type: `(record: LogRecord) => boolean`
+- [ ] Define `FilterLike` type: `Filter | LogLevel | null`
+- [ ] `toFilter(filterLike)` — normalizes FilterLike → Filter:
+  - Function → return as-is
+  - LogLevel string → `getLevelFilter(level)`
+  - `null` → `() => false` (reject everything)
+- [ ] `getLevelFilter(level)` — returns a filter that accepts records at or above the given level
+
+**Performance note:** logtape optimizes `getLevelFilter` with explicit comparisons instead of `compareLogLevel()` for hot-path performance. For now, using `compareLogLevel` is fine — optimize later if profiling shows it matters.
+
+### Tests (`filter.test.ts`)
+
+- [ ] Level filter accepts records at the specified level and above
+- [ ] Level filter rejects records below the specified level
+- [ ] `toFilter` with a function passes it through unchanged
+- [ ] `toFilter` with `null` rejects everything
+- [ ] `toFilter` with a LogLevel string creates a level filter
+- [ ] `getLevelFilter("trace")` accepts everything
+
+**Reference:** `~/oss/logtape/packages/logtape/src/filter.ts` (~64 lines)
 
 ---
 
 ## Phase 3: Sinks
 
-Output destinations. Keep it dead simple—a sink is just a function.
+Output destinations. A sink is `(record: LogRecord) => void` — the simplest possible contract. Custom sinks are one-liners.
 
-- [ ] **`sink.ts`** - Define `Sink` type: `(record: LogRecord) => void`
-- [ ] **`sink.ts`** - Implement `getConsoleSink(options?)` - maps levels to console methods, supports custom formatters
-- [ ] **`sink.ts`** - Implement `withFilter(sink, filter)` - compose a filter onto a sink
-- [ ] **Tests** - Console sink outputs to correct console methods
-- [ ] **Tests** - withFilter correctly gates records
+### `sink.ts`
 
-**Later (not Phase 3)**:
+- [ ] Define `Sink` type: `(record: LogRecord) => void`
+- [ ] `getConsoleSink(options?)` — maps levels to console methods:
+  - `trace` → `console.debug`
+  - `debug` → `console.debug`
+  - `info` → `console.info`
+  - `warning` → `console.warn`
+  - `error` → `console.error`
+  - `fatal` → `console.error`
+  - Accepts an optional `formatter: TextFormatter` to control output format
+  - Default format: `"TIMESTAMP [LEVEL] category: message {properties}"`
+- [ ] `withFilter(sink, filter)` — returns a new Sink that only forwards records passing the filter
 
-- Stream sink (`getStreamSink`)
+**Out of scope for Phase 3** (designed-for, built later):
+
+- `getStreamSink` (WritableStream-based)
+- `fromAsyncSink` (Promise → Sink wrapper)
+- `fingersCrossed` (buffer-until-trigger pattern)
 - Non-blocking/buffered mode
-- `fromAsyncSink` wrapper
 
-**Reference**: `~/oss/logtape/packages/logtape/src/sink.ts`
+### Tests (`sink.test.ts`)
 
----
+- [ ] Console sink calls `console.info` for info-level records
+- [ ] Console sink calls `console.error` for error-level records
+- [ ] Console sink calls `console.warn` for warning-level records
+- [ ] Console sink with custom formatter uses the formatter's output
+- [ ] `withFilter` blocks records that fail the filter
+- [ ] `withFilter` passes records that satisfy the filter
+- [ ] Custom sink (just a function) receives the full LogRecord
 
-## Phase 4: Formatters
-
-How log records become human-readable text or machine-parseable JSON.
-
-- [ ] **`formatter.ts`** - Define `TextFormatter` type: `(record: LogRecord) => string`
-- [ ] **`formatter.ts`** - Implement `defaultTextFormatter` - `TIMESTAMP [LEVEL] category: message {properties}`
-- [ ] **`formatter.ts`** - Implement `jsonFormatter` - JSON Lines format
-- [ ] **`formatter.ts`** - Implement `ansiColorFormatter` - colored terminal output
-- [ ] **`formatter.ts`** - Handle cross-runtime value inspection (Node `util.inspect`, browser `JSON.stringify`)
-- [ ] **Tests** - Each formatter produces expected output format
-
-**Reference**: `~/oss/logtape/packages/logtape/src/formatter.ts`, `~/oss/evlog/packages/evlog/src/logger.ts` (pretty printing section)
+**Reference:** `~/oss/logtape/packages/logtape/src/sink.ts`
 
 ---
 
-## Phase 5: Logger Core
+## Phase 4: Cross-Runtime Utilities
 
-The main `Logger` class and `createLogger()` factory. This is the heart of the library.
+**Moved up from Phase 9.** Formatters need `inspect()`, and inspect varies by runtime. Build this before formatters so we have the right foundation.
 
-- [ ] **`logger.ts`** - Define `Logger` interface (info, debug, warn, error, fatal, trace methods)
-- [ ] **`logger.ts`** - Each method supports two overloads: `(message: string, props?)` and `(props: Record<string, unknown>)`
-- [ ] **`logger.ts`** - Implement internal `LoggerImpl` class
-- [ ] **`logger.ts`** - Implement `createLogger(category)` factory (accepts string or string array)
-- [ ] **`logger.ts`** - Implement `.child(subcategory)` for hierarchical loggers
-- [ ] **`logger.ts`** - Implement `.with(properties)` for explicit context binding
-- [ ] **`logger.ts`** - Use `WeakRef` for child logger references to prevent memory leaks
-- [ ] **`logger.ts`** - When unconfigured, all methods are no-ops (library-first)
-- [ ] **`logger.ts`** - `isEnabledFor(level)` check for conditional logging
-- [ ] **Tests** - Unconfigured logger produces zero output and zero errors
-- [ ] **Tests** - Logger dispatches to correct sinks based on level
-- [ ] **Tests** - Child loggers inherit parent category
-- [ ] **Tests** - `.with()` attaches properties to all subsequent logs
+### `util.ts` (browser/default)
 
-**Reference**: `~/oss/logtape/packages/logtape/src/logger.ts` (LoggerImpl class)
+- [ ] `inspect(value: unknown): string` — uses `JSON.stringify` with a replacer that handles circular references, `undefined`, `BigInt`, `Error` objects
+- [ ] Handle edge cases: `undefined` → `"undefined"`, functions → `"[Function: name]"`, symbols → `"Symbol(description)"`
 
----
+### `util.node.ts`
 
-## Phase 6: Configuration System
+- [ ] `inspect(value: unknown): string` — wraps Node.js `util.inspect(value, { depth: 4, colors: false })`
+- [ ] Re-export for use via `#util` conditional import
 
-The `configure()` function that wires loggers to sinks. Only called by app developers.
+### `util.deno.ts`
 
-- [ ] **`config.ts`** - Define `Config` interface (sinks map, loggers array, filters map)
-- [ ] **`config.ts`** - Define `LoggerConfig` interface (category, sinks, filters, level, parentSinks)
-- [ ] **`config.ts`** - Implement `configure(config)` - async, sets up the logger tree
-- [ ] **`config.ts`** - Implement `reset()` - clears all configuration (useful for tests)
-- [ ] **`config.ts`** - Implement `dispose()` - cleanup disposable sinks
-- [ ] **`config.ts`** - Implement `getConfig()` - returns current configuration
-- [ ] **`config.ts`** - Wire hierarchical category dispatch: child messages bubble to parent sinks
-- [ ] **`config.ts`** - Support `parentSinks: 'inherit' | 'override'` on logger configs
-- [ ] **Tests** - configure() wires sinks to loggers correctly
-- [ ] **Tests** - Hierarchical dispatch: child category logs reach parent sinks
-- [ ] **Tests** - parentSinks: 'override' stops inheritance
-- [ ] **Tests** - reset() clears all state
-- [ ] **Tests** - Multiple configure() calls (reconfiguration)
+- [ ] `inspect(value: unknown): string` — wraps `Deno.inspect(value, { depth: 4 })`
 
-**Reference**: `~/oss/logtape/packages/logtape/src/config.ts`
+### Build configuration
+
+- [ ] Add `#util` to `package.json` `imports` field with node/bun/deno/browser/default conditions (see AD-12)
+- [ ] Add `util.ts`, `util.node.ts`, `util.deno.ts` as entry points in `tsdown.config.ts`
+
+### Tests (`util.test.ts`)
+
+- [ ] `inspect` renders primitives correctly (string, number, boolean, null, undefined)
+- [ ] `inspect` renders objects and arrays
+- [ ] `inspect` handles Error objects (shows name + message + stack)
+- [ ] `inspect` handles circular references without crashing
+
+**Reference:** `~/oss/logtape/packages/logtape/src/util.ts`, `util.node.ts`, `util.deno.ts`
 
 ---
 
-## Phase 7: Scoped Wide Events
+## Phase 5: Formatters
 
-The accumulate-then-emit pattern. This is what makes logscope unique.
+Transform LogRecords into human-readable or machine-readable output. Depend on `#util` for value inspection.
 
-- [ ] **`scope.ts`** - Define `Scope` interface (set, emit, getContext)
-- [ ] **`scope.ts`** - Implement `scope(initialContext?)` method on Logger
-- [ ] **`scope.ts`** - `.set(data)` deep-merges into accumulated context
-- [ ] **`scope.ts`** - `.emit(overrides?)` calculates duration and emits one LogRecord with all context
-- [ ] **`scope.ts`** - `.getContext()` returns current accumulated context snapshot
-- [ ] **`scope.ts`** - Duration tracking (startTime on creation, duration on emit)
-- [ ] **`scope.ts`** - Level determination: error if `.error()` was called, warn if `.warn()`, else info
-- [ ] **`scope.ts`** - Scope inherits logger's category and context
-- [ ] **Tests** - set() accumulates context correctly
-- [ ] **Tests** - emit() produces one LogRecord with all accumulated data
-- [ ] **Tests** - Duration is calculated from scope creation to emit
-- [ ] **Tests** - Scope respects logger configuration (unconfigured = silent)
-- [ ] **Tests** - Multiple set() calls deep-merge without overwriting
+### `formatter.ts`
 
-**Reference**: `~/oss/evlog/packages/evlog/src/logger.ts` (createRequestLogger section)
+- [ ] Define `TextFormatter` type: `(record: LogRecord) => string`
+- [ ] `getTextFormatter(options?)` — configurable text output:
+  - Default: `"2024-01-15T10:30:00.000Z [INFO] my-app · db: query executed {table: "users", ms: 42}"`
+  - Options: timestamp format, level format, category separator, value renderer
+- [ ] `getJsonFormatter(options?)` — NDJSON output:
+  - `{"@timestamp":"...","level":"INFO","message":"...","logger":"my-app.db","properties":{...}}`
+  - Custom replacer for Error serialization (name, message, stack, cause)
+- [ ] `getAnsiColorFormatter(options?)` — colored terminal output using raw ANSI escape codes:
+  - Level colors: trace=gray, debug=cyan, info=green, warning=yellow, error=red, fatal=red+bold
+  - Timestamp in dim, category in bold
+  - No color libraries — raw `\x1b[...m` codes
+- [ ] Internal `renderMessage(record)` helper — converts the interleaved message array into a string using `inspect()` for non-string values
 
----
+**DX decision:** Formatters are factories (`getTextFormatter()`) not classes. Users get a function, not an instance. This matches the Sink contract and makes composition trivial.
 
-## Phase 8: Context System
+### Tests (`formatter.test.ts`)
 
-Explicit and implicit context propagation.
+- [ ] Text formatter produces expected format with all components
+- [ ] Text formatter handles records with no message (properties-only)
+- [ ] Text formatter handles records with no properties
+- [ ] JSON formatter produces valid JSON Lines (one JSON object per line)
+- [ ] JSON formatter serializes Error objects with name/message/stack/cause
+- [ ] ANSI formatter includes color escape codes
+- [ ] `renderMessage` correctly interleaves string parts and inspected values
 
-- [ ] **`context.ts`** - Implement `.with(properties)` explicit context (already in Phase 5, refine here)
-- [ ] **`context.ts`** - Implement `withContext(ctx, callback)` for implicit context via AsyncLocalStorage
-- [ ] **`context.ts`** - Define `ContextLocalStorage` interface (abstract over AsyncLocalStorage)
-- [ ] **`context.ts`** - Context priority: message props > explicit (.with) > implicit (withContext)
-- [ ] **`config.ts`** - Add `contextLocalStorage` option to configure()
-- [ ] **Tests** - withContext injects properties into all logs within callback
-- [ ] **Tests** - Context priority order is respected
-- [ ] **Tests** - Works without AsyncLocalStorage (browser environments gracefully degrade)
-
-**Reference**: `~/oss/logtape/packages/logtape/src/context.ts`
+**Reference:** `~/oss/logtape/packages/logtape/src/formatter.ts`, `~/oss/evlog/packages/evlog/src/logger.ts` (pretty printing)
 
 ---
 
-## Phase 9: Cross-Runtime Utilities
+## Phase 6: Logger Core
 
-Make logscope work everywhere.
+The heart of the library. Implements the tree structure, sink dispatch, and public API.
 
-- [ ] **`util.ts`** - Base implementation (browser-safe, uses JSON.stringify)
-- [ ] **`util.node.ts`** - Node.js implementation (uses `util.inspect`)
-- [ ] **`util.deno.ts`** - Deno implementation (uses `Deno.inspect`)
-- [ ] **`package.json`** - Set up conditional imports (`#util` with node/deno/browser/default conditions)
-- [ ] **`tsdown.config.ts`** - Configure multiple entry points for conditional exports
-- [ ] **Tests** - Verify value inspection works in Node.js environment
+### `logger.ts` — LoggerImpl (internal)
 
-**Reference**: `~/oss/logtape/packages/logtape/src/util.ts`, `util.node.ts`, `util.deno.ts`
+- [ ] `LoggerImpl` class — the tree node:
+  ```typescript
+  class LoggerImpl {
+    readonly parent: LoggerImpl | null
+    readonly children: Record<string, LoggerImpl | WeakRef<LoggerImpl>>
+    readonly category: readonly string[]
+    readonly sinks: Sink[]
+    readonly filters: Filter[]
+    parentSinks: 'inherit' | 'override'
+    lowestLevel: LogLevel | null
+  }
+  ```
+- [ ] Singleton root via `Symbol.for("logscope.rootLogger")` on `globalThis` (AD-1)
+- [ ] `getChild(subcategory)` — creates or retrieves child node, uses WeakRef (AD-4)
+- [ ] `*getSinks(level)` — generator walking up tree, yielding sinks (AD-5)
+- [ ] `filter(record)` — walks up tree checking filters (AD-7)
+- [ ] `emit(record, bypassSinks?)` — constructs full record, checks filters, dispatches to sinks with error handling (AD-6)
+- [ ] `resetDescendants()` — recursively clears sinks/filters from all descendants (for `reset()`)
+- [ ] Static `getLogger(category)` — navigates from root to create/find the LoggerImpl for a category
+
+### `logger.ts` — Logger (public interface)
+
+- [ ] `Logger` interface with methods: `trace`, `debug`, `info`, `warn`/`warning`, `error`, `fatal`
+- [ ] Each method supports overloads:
+  1. `(message: string, properties?: Record<string, unknown>)` — string + optional props
+  2. `(properties: Record<string, unknown>)` — properties-only (structured log)
+  3. Tagged template literal: `` log.info`Hello ${name}` `` (stretch goal — can defer)
+- [ ] `child(subcategory: string)` — returns Logger for `[...parentCategory, subcategory]`
+- [ ] `with(properties)` — returns LoggerCtx wrapping same LoggerImpl with extra properties (AD-2)
+- [ ] `scope(initialContext?)` — creates a Scope (Phase 7, but define the method signature here)
+- [ ] `isEnabledFor(level)` — checks if any sinks exist for this level (for conditional expensive computation)
+
+### `logger.ts` — LoggerCtx (contextual wrapper)
+
+- [ ] Wraps a LoggerImpl with extra `properties: Record<string, unknown>`
+- [ ] All log methods merge ctx properties into the LogRecord's properties
+- [ ] `child()` on LoggerCtx returns a new LoggerCtx wrapping the child LoggerImpl with the _same_ properties
+- [ ] `with()` on LoggerCtx returns a new LoggerCtx with merged properties
+
+### `logger.ts` — Public factory
+
+- [ ] `createLogger(category: string | readonly string[])` — the public entry point
+  - String input → `["my-app"]`
+  - Array input → `["my-app", "db"]`
+  - Returns a Logger backed by the LoggerImpl at that category in the singleton tree
+
+### Tests (`logger.test.ts`)
+
+- [ ] **Library-first**: Unconfigured logger produces zero output and zero errors
+- [ ] **Library-first**: Unconfigured logger methods do not throw
+- [ ] Logger dispatches records to sinks attached to its tree node
+- [ ] Child logger has correct category: `createLogger("app").child("db")` → `["app", "db"]`
+- [ ] Records bubble up to parent sinks (hierarchical dispatch)
+- [ ] `.with({ requestId })` attaches properties to all subsequent logs
+- [ ] `.with()` on child preserves parent context: `log.with({ a: 1 }).child("db").info(...)` has `a: 1`
+- [ ] `isEnabledFor` returns false when no sinks exist, true when they do
+- [ ] Multiple `createLogger("same")` calls return loggers backed by the same tree node
+- [ ] Singleton root: `Symbol.for("logscope.rootLogger")` on `globalThis` is reused
+
+**Reference:** `~/oss/logtape/packages/logtape/src/logger.ts`
+
+---
+
+## Phase 7: Configuration System
+
+The `configure()` function wires the tree. Only called by app developers, never by library authors.
+
+### `config.ts`
+
+- [ ] Define `Config<TSinkId, TFilterId>` interface (AD-8):
+  ```typescript
+  interface Config<TSinkId extends string = string, TFilterId extends string = string> {
+    sinks: Record<TSinkId, Sink>
+    filters?: Record<TFilterId, FilterLike>
+    loggers: LoggerConfig<TSinkId, TFilterId>[]
+    contextLocalStorage?: ContextLocalStorage<Record<string, unknown>>
+    reset?: boolean // Allow reconfiguration (throws if already configured without this)
+  }
+  ```
+- [ ] Define `LoggerConfig<TSinkId, TFilterId>`:
+  ```typescript
+  interface LoggerConfig<TSinkId, TFilterId> {
+    category: string | readonly string[]
+    sinks: TSinkId[]
+    filters?: TFilterId[]
+    level?: LogLevel
+    parentSinks?: 'inherit' | 'override'
+  }
+  ```
+- [ ] Module-level state: `currentConfig`, `strongRefs: Set<LoggerImpl>`, `disposables`
+- [ ] `configure(config)` — async function:
+  1. Throw `ConfigError` if already configured and `config.reset !== true`
+  2. Call `reset()` to clean up previous state
+  3. For each logger config: get/create LoggerImpl, push sinks/filters, add to strongRefs
+  4. Detect duplicate categories → throw ConfigError
+  5. If meta logger `["logscope", "meta"]` wasn't explicitly configured, add default console sink
+  6. Register exit handlers (Node: `process.on("exit")`, browser: `addEventListener("pagehide")`)
+- [ ] `reset()` — clears sinks/filters from all loggers, disposes disposable sinks, clears strongRefs
+- [ ] `dispose()` — alias for reset() with disposable cleanup emphasis
+
+### Tests (`config.test.ts`)
+
+- [ ] `configure()` wires sinks to the correct logger tree nodes
+- [ ] Hierarchical dispatch: child logs reach parent-configured sinks
+- [ ] `parentSinks: "override"` stops upward sink inheritance
+- [ ] `reset()` clears all state — loggers become silent again
+- [ ] Throws ConfigError on duplicate `configure()` without `reset: true`
+- [ ] `configure({ reset: true })` reconfigures successfully
+- [ ] Type-safe: sink/filter IDs in loggers must match declared sinks/filters (compile-time check)
+- [ ] Meta logger gets default console sink when not explicitly configured
+- [ ] Sink errors are caught and logged to meta logger (not propagated to caller)
+
+**Reference:** `~/oss/logtape/packages/logtape/src/config.ts`
+
+---
+
+## Phase 8: Scoped Wide Events
+
+The accumulate-then-emit pattern. This is logscope's unique value proposition — combining logtape's library-first architecture with evlog's wide event model.
+
+### `scope.ts`
+
+- [ ] Define `Scope` interface:
+  ```typescript
+  interface Scope {
+    set(data: Record<string, unknown>): void
+    error(error: Error | string, context?: Record<string, unknown>): void
+    warn(message: string, context?: Record<string, unknown>): void
+    info(message: string, context?: Record<string, unknown>): void
+    emit(overrides?: Record<string, unknown>): void
+    getContext(): Record<string, unknown>
+  }
+  ```
+- [ ] `createScope(logger, initialContext?)` — internal factory (called by `logger.scope()`)
+- [ ] Internal state: `context`, `startTime`, `hasError`, `hasWarn`, `requestLogs[]`
+- [ ] `.set(data)` — deep-merges into accumulated context (new data wins, AD-9)
+- [ ] `.error(error, ctx?)` — sets `hasError = true`, extracts error properties (name, message, stack, cause), deep-merges
+- [ ] `.warn(message, ctx?)` — sets `hasWarn = true`, adds to `requestLogs` array
+- [ ] `.info(message, ctx?)` — adds to `requestLogs` array
+- [ ] `.emit(overrides?)`:
+  1. Calculate `duration` from `startTime`
+  2. Determine level: error if `hasError`, warning if `hasWarn`, else info
+  3. Merge `overrides` into context
+  4. Create LogRecord with all accumulated properties + duration + requestLogs
+  5. Emit through the logger's normal dispatch (respects tree, sinks, filters)
+- [ ] `.getContext()` — returns a snapshot (clone) of current accumulated context
+- [ ] Scope inherits the logger's category and any `.with()` context
+
+### `deepMerge` utility (in `util.ts` or `scope.ts`)
+
+- [ ] Implement `deepMerge(target, source)` — deep merge where source values win:
+  - Primitive values: source wins
+  - Arrays: source replaces (no concat — keeps semantics simple)
+  - Objects: recursively merge
+  - `null`/`undefined` in source: skip (don't overwrite with nothing)
+
+### Tests (`scope.test.ts`)
+
+- [ ] `set()` accumulates context across multiple calls
+- [ ] `set()` deep-merges: `set({ user: { id: '1' } })` + `set({ user: { name: 'Alice' } })` → `{ user: { id: '1', name: 'Alice' } }`
+- [ ] `set()` new values win: `set({ x: 1 })` + `set({ x: 2 })` → `{ x: 2 }`
+- [ ] `emit()` produces one LogRecord with all accumulated data
+- [ ] `emit()` includes `duration` in properties (ms since scope creation)
+- [ ] `emit()` level is `error` when `.error()` was called
+- [ ] `emit()` level is `warning` when `.warn()` was called (no error)
+- [ ] `emit()` level is `info` by default
+- [ ] `error()` extracts Error properties (name, message, stack)
+- [ ] `getContext()` returns a snapshot that doesn't mutate when `set()` is called again
+- [ ] Scope respects logger configuration (unconfigured logger → scope.emit() is silent)
+- [ ] Scope inherits `.with()` context from its parent logger
+- [ ] `requestLogs` are included in the emitted record
+
+**Reference:** `~/oss/evlog/packages/evlog/src/logger.ts` (createRequestLogger)
+
+---
+
+## Phase 9: Context System
+
+Explicit and implicit context propagation. Two mechanisms, clear priority order.
+
+### `context.ts`
+
+- [ ] Define `ContextLocalStorage<T>` interface:
+
+  ```typescript
+  interface ContextLocalStorage<T> {
+    getStore(): T | undefined
+    run<R>(store: T, callback: () => R): R
+  }
+  ```
+
+  (This abstracts over `AsyncLocalStorage` — any compatible implementation works)
+
+- [ ] `withContext(properties, callback)` — runs callback with implicit context:
+
+  ```typescript
+  withContext({ requestId: 'req_abc' }, () => {
+    log.info('handled request') // requestId automatically attached
+  })
+  ```
+
+  - Gets `contextLocalStorage` from the root logger's config
+  - If not configured, logs warning to meta logger and runs callback without context
+  - Contexts nest: child contexts inherit and override parent properties
+
+- [ ] `getImplicitContext()` — retrieves current implicit context from the storage (called internally by emit)
+
+- [ ] Context priority order (highest → lowest):
+  1. **Message properties** — `log.info('msg', { requestId: 'override' })`
+  2. **Explicit context** — `log.with({ requestId: 'explicit' })`
+  3. **Implicit context** — `withContext({ requestId: 'implicit' }, ...)`
+
+- [ ] Add `contextLocalStorage` option to `configure()` (wire to root LoggerImpl)
+
+### Tests (`context.test.ts`)
+
+- [ ] `withContext` injects properties into all logs within callback scope
+- [ ] Nested `withContext` calls: inner overrides outer for same keys
+- [ ] Context priority: message props > explicit `.with()` > implicit `withContext`
+- [ ] Without `contextLocalStorage` configured, `withContext` runs callback normally (no crash)
+- [ ] Context does not leak across `withContext` boundaries
+- [ ] Scope inside `withContext` inherits the implicit context
+
+**Reference:** `~/oss/logtape/packages/logtape/src/context.ts`
 
 ---
 
 ## Phase 10: Public API & Barrel Export
 
-Wire everything together into a clean public API.
+Wire everything into a clean, tree-shakeable public API.
 
-- [ ] **`index.ts`** - Export all public types and functions
-- [ ] **`index.ts`** - Ensure tree-shaking works (only import what you use)
-- [ ] **`package.json`** - Finalize exports map (main, types, ESM, CJS)
-- [ ] **`package.json`** - Set `"sideEffects": false`
-- [ ] **`package.json`** - Set `"files"` to only include dist + README
-- [ ] Verify the library works when imported as a dependency
-- [ ] Verify unconfigured behavior is completely silent
-- [ ] Verify bundle size is reasonable (target: <10KB minified+gzipped)
+### `index.ts`
+
+- [ ] Export public types: `LogLevel`, `LogRecord`, `Filter`, `FilterLike`, `Sink`, `TextFormatter`, `Logger`, `Scope`, `Config`, `LoggerConfig`, `ContextLocalStorage`
+- [ ] Export public functions: `createLogger`, `configure`, `reset`, `dispose`, `getConsoleSink`, `withFilter`, `getTextFormatter`, `getJsonFormatter`, `getAnsiColorFormatter`, `withContext`, `toFilter`, `getLevelFilter`, `parseLogLevel`, `isLogLevel`, `compareLogLevel`, `getLogLevels`
+- [ ] Do NOT export: `LoggerImpl`, `LoggerCtx`, internal utilities
+
+### Package configuration
+
+- [ ] `"sideEffects": false` in package.json
+- [ ] `"files": ["dist", "README.md", "LICENSE"]` in package.json
+- [ ] Verify exports map is complete (ESM + CJS + types)
+- [ ] Verify tree-shaking: importing only `createLogger` should not pull in formatter code
+
+### Integration tests
+
+- [ ] Full end-to-end: `configure()` → `createLogger()` → `log.info()` → sink receives record
+- [ ] Library consumer simulation: import logscope, use without configuring → zero output
+- [ ] Verify bundle size is reasonable (target: <10KB minified+gzipped for core)
+- [ ] Verify dual ESM/CJS output works
 
 ---
 
 ## Phase 11: Documentation & Polish
 
-- [ ] Finalize README.md with accurate API docs and examples
-- [ ] Add JSDoc comments to all public APIs
-- [ ] Add CHANGELOG.md
+- [ ] Finalize README.md with accurate API docs and realistic examples
+- [ ] Add JSDoc comments to all public API functions and types
+- [ ] Add CHANGELOG.md (v0.1.0)
 - [ ] Add LICENSE (MIT)
-- [ ] Add contributing guidelines
-- [ ] Verify all code examples in README actually work
+- [ ] Verify all README code examples actually compile and run
+- [ ] Add `"repository"`, `"keywords"`, `"description"` to package.json
 
 ---
 
-## Future Phases (Not MVP)
+## Future Phases (Post-MVP)
 
-These are out of scope for the initial release but designed-for in the architecture:
+These are out of scope for v0.1.0 but the architecture supports them. The internal design should not need to change to add these.
 
-### Stream Sink
+### Stream & Async Sinks
 
-- [ ] `getStreamSink(stream)` - WritableStream-based sink
-- [ ] Non-blocking mode with buffered writes
+- [ ] `getStreamSink(stream)` — WritableStream-based sink with TextEncoder
+- [ ] `fromAsyncSink(fn)` — wraps async functions as sync sinks (chains promises internally)
+- [ ] Proper `Symbol.asyncDispose` support for cleanup
+- [ ] Non-blocking console sink with write buffering
 
-### Async Sink Support
+### Pipeline Utilities (from evlog)
 
-- [ ] `fromAsyncSink(fn)` - wrap async functions as sinks
-- [ ] Proper disposal with Symbol.asyncDispose
-
-### Pipeline Utilities
-
-- [ ] `createPipeline(options)` - batching, retry, buffer management
+- [ ] `createPipeline(options)` — batching, retry, buffer overflow management
+- [ ] Options: `batch.size`, `batch.intervalMs`, `maxBufferSize`, `maxAttempts`
+- [ ] Backoff strategies: `exponential` (default), `linear`, `fixed`
+- [ ] `onDropped(batch, error)` callback for monitoring
+- [ ] `flush()` for graceful shutdown
 - [ ] Composable with any sink
-- [ ] Exponential/linear/fixed backoff strategies
 
-### Sampling
+### Sampling (from evlog)
 
-- [ ] Head sampling (probabilistic per-level)
-- [ ] Tail sampling (force-keep based on outcome)
+- [ ] Head sampling: probabilistic per-level percentage (0-100%)
+- [ ] Tail sampling: force-keep conditions (status >= N, duration >= N ms, path matches pattern)
+- [ ] Tail sampling checked first — if force-kept, skip head sampling entirely
+
+### Tagged Template Literals
+
+- [ ] `` log.info`Hello ${name}, you have ${count} items` ``
+- [ ] Preserves structured values in message array
+- [ ] `rawMessage` becomes `TemplateStringsArray`
+
+### Lazy Evaluation
+
+- [ ] `lazy(() => value)` in `.with()` — deferred evaluation per log call
+- [ ] `() => ({ props })` as properties arg — only evaluated if level is enabled
+- [ ] `log.info(l => l`msg ${expensive()}`)` — callback form
+
+### Pretty Dev Output (from evlog)
+
+- [ ] Tree-formatted wide event output with `|--` and `+--` prefixes
+- [ ] Colored levels, dim timestamps, bold categories
+- [ ] Auto dev/prod detection (pretty in dev, JSON in prod)
+
+### Advanced Sink Patterns
+
+- [ ] `fingersCrossed(sink, options)` — buffer until trigger level, then flush all
+- [ ] Category isolation for fingersCrossed (descendant/ancestor/both)
+- [ ] Context-based isolation with LRU eviction
 
 ### Framework Integrations (separate packages)
 
-- [ ] `@logscope/hono` - Hono middleware
-- [ ] `@logscope/express` - Express middleware
-- [ ] `@logscope/next` - Next.js integration
+- [ ] `@logscope/hono` — Hono middleware (creates scope per request, emits on response)
+- [ ] `@logscope/express` — Express middleware
+- [ ] `@logscope/next` — Next.js integration with AsyncLocalStorage
+- [ ] `@logscope/nitro` — Nitro/Nuxt plugin
 
 ### Sink Adapters (separate packages)
 
-- [ ] `@logscope/axiom` - Axiom drain
-- [ ] `@logscope/otlp` - OpenTelemetry drain
-- [ ] `@logscope/sentry` - Sentry integration
+- [ ] `@logscope/axiom` — Axiom drain (use `defineDrain` pattern from evlog)
+- [ ] `@logscope/otlp` — OpenTelemetry drain
+- [ ] `@logscope/sentry` — Sentry integration
 
 ### Browser-Specific Features
 
 - [ ] `sendBeacon` drain for page unload reliability
 - [ ] `keepalive` fetch for page transitions
 - [ ] Visibility change auto-flush
+- [ ] `createBrowserDrain(config)` — composite browser transport
 
-### Pretty Dev Output
+### Category Prefix (from logtape)
 
-- [ ] Tree-formatted console output (like evlog's pretty mode)
-- [ ] Automatic dev/prod detection
+- [ ] `withCategoryPrefix(prefix, callback)` — prepend category segments within a scope
+- [ ] Useful for SDKs that want to namespace their internal logging
 
 ---
 
 ## Implementation Order Summary
 
 ```
-Phase 0: Setup          → Can build and test
-Phase 1: Levels/Records → Data structures exist
-Phase 2: Filters        → Can filter records
-Phase 3: Sinks          → Can output records
-Phase 4: Formatters     → Records look good
-Phase 5: Logger Core    → Can create loggers and log
-Phase 6: Configuration  → Can wire loggers to sinks
-Phase 7: Scoped Events  → Wide event accumulation works
-Phase 8: Context        → Implicit/explicit context propagation
-Phase 9: Cross-Runtime  → Works everywhere
-Phase 10: Public API    → Clean exports, tree-shakeable
-Phase 11: Docs/Polish   → Ready for v0.1.0 publish
+Phase 0:  Setup               ✅ Can build and test
+Phase 1:  Levels & Records    → Foundation types exist
+Phase 2:  Filters             → Can filter records by level or custom predicate
+Phase 3:  Sinks               → Can output records (console, custom functions)
+Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
+Phase 5:  Formatters          → Records become readable text, JSON, or colored output
+Phase 6:  Logger Core         → createLogger(), child(), .with(), tree dispatch
+Phase 7:  Configuration       → configure() wires loggers to sinks
+Phase 8:  Scoped Wide Events  → scope(), .set(), .emit() accumulation pattern
+Phase 9:  Context System      → withContext(), implicit/explicit context
+Phase 10: Public API          → Clean exports, tree-shaking, bundle size
+Phase 11: Docs & Polish       → README, JSDoc, LICENSE, v0.1.0
 ```
 
-Each phase should end with passing tests and a working (partial) library.
+Each phase ends with passing tests and a working (partial) library. Phases 1-3 are small and fast. Phase 6 is the biggest. Phase 8 is the most novel.
+
+---
+
+## Quick Reference: What to Study
+
+When implementing each phase, these are the key files to reference:
+
+| Phase | logtape file                                  | evlog file                            | Notes                                               |
+| ----- | --------------------------------------------- | ------------------------------------- | --------------------------------------------------- |
+| 1     | `src/level.ts`, `src/record.ts`               | `src/types.ts`                        | logtape's record is the primary model               |
+| 2     | `src/filter.ts`                               | —                                     | Tiny module, follow logtape exactly                 |
+| 3     | `src/sink.ts`                                 | —                                     | Start with console only                             |
+| 4     | `src/util.ts`, `util.node.ts`, `util.deno.ts` | —                                     | Conditional import pattern                          |
+| 5     | `src/formatter.ts`                            | `src/logger.ts` (pretty section)      | logtape for structure, evlog for pretty inspiration |
+| 6     | `src/logger.ts`                               | —                                     | The big one. Study LoggerImpl carefully             |
+| 7     | `src/config.ts`                               | —                                     | Type-safe config pattern                            |
+| 8     | —                                             | `src/logger.ts` (createRequestLogger) | evlog's accumulation model                          |
+| 9     | `src/context.ts`                              | `src/next/storage.ts`                 | logtape for design, evlog for ALS usage             |
