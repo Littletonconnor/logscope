@@ -285,35 +285,35 @@ Output destinations. A sink is `(record: LogRecord) => void` — the simplest po
 
 ---
 
-## Phase 4: Cross-Runtime Utilities
+## Phase 4: Cross-Runtime Utilities ✅
 
 **Moved up from Phase 9.** Formatters need `inspect()`, and inspect varies by runtime. Build this before formatters so we have the right foundation.
 
 ### `util.ts` (browser/default)
 
-- [ ] `inspect(value: unknown): string` — uses `JSON.stringify` with a replacer that handles circular references, `undefined`, `BigInt`, `Error` objects
-- [ ] Handle edge cases: `undefined` → `"undefined"`, functions → `"[Function: name]"`, symbols → `"Symbol(description)"`
+- [x] `inspect(value: unknown): string` — uses `JSON.stringify` with a replacer that handles circular references, `undefined`, `BigInt`, `Error` objects
+- [x] Handle edge cases: `undefined` → `"undefined"`, functions → `"[Function: name]"`, symbols → `"Symbol(description)"`
 
 ### `util.node.ts`
 
-- [ ] `inspect(value: unknown): string` — wraps Node.js `util.inspect(value, { depth: 4, colors: false })`
-- [ ] Re-export for use via `#util` conditional import
+- [x] `inspect(value: unknown): string` — wraps Node.js `util.inspect(value, { depth: 4, colors: false })`
+- [x] Re-export for use via `#util` conditional import
 
 ### `util.deno.ts`
 
-- [ ] `inspect(value: unknown): string` — wraps `Deno.inspect(value, { depth: 4 })`
+- [x] `inspect(value: unknown): string` — wraps `Deno.inspect(value, { depth: 4 })`
 
 ### Build configuration
 
-- [ ] Add `#util` to `package.json` `imports` field with node/bun/deno/browser/default conditions (see AD-12)
-- [ ] Add `util.ts`, `util.node.ts`, `util.deno.ts` as entry points in `tsdown.config.ts`
+- [x] Add `#util` to `package.json` `imports` field with node/bun/deno/browser/default conditions (see AD-12)
+- [x] Add `util.ts`, `util.node.ts`, `util.deno.ts` as entry points in `tsdown.config.ts`
 
 ### Tests (`util.test.ts`)
 
-- [ ] `inspect` renders primitives correctly (string, number, boolean, null, undefined)
-- [ ] `inspect` renders objects and arrays
-- [ ] `inspect` handles Error objects (shows name + message + stack)
-- [ ] `inspect` handles circular references without crashing
+- [x] `inspect` renders primitives correctly (string, number, boolean, null, undefined)
+- [x] `inspect` renders objects and arrays
+- [x] `inspect` handles Error objects (shows name + message + stack)
+- [x] `inspect` handles circular references without crashing
 
 **Reference:** `~/oss/logtape/packages/logtape/src/util.ts`, `util.node.ts`, `util.deno.ts`
 
