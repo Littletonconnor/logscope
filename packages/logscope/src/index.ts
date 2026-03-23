@@ -40,3 +40,7 @@ export type { Logger } from './logger.ts'
 // Config
 export { configure, reset, dispose, isConfigured, ConfigError } from './config.ts'
 export type { Config, LoggerConfig } from './config.ts'
+
+// Scope
+export { deepMerge } from './scope.ts'
+export type { Scope } from './scope.ts'

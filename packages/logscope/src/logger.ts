@@ -2,7 +2,9 @@ import type { LogLevel } from './level.ts'
 import type { LogRecord } from './record.ts'
 import type { Filter } from './filter.ts'
 import type { Sink } from './sink.ts'
+import type { Scope } from './scope.ts'
 import { compareLogLevel } from './level.ts'
+import { createScope } from './scope.ts'
 
 // ---------------------------------------------------------------------------
 // Globals – singleton root via Symbol.for (AD-1)
@@ -269,6 +271,9 @@ export interface Logger {
   /** Create a contextual wrapper that attaches properties to all logs */
   with(properties: Record<string, unknown>): Logger
 
+  /** Create a scoped wide event that accumulates context and emits once */
+  scope(initialContext?: Record<string, unknown>): Scope
+
   /** Check if any sinks exist for the given level */
   isEnabledFor(level: LogLevel): boolean
 }
@@ -349,6 +354,10 @@ class LoggerCtx implements Logger {
 
   with(properties: Record<string, unknown>): Logger {
     return new LoggerCtx(this.impl, { ...this.properties, ...properties })
+  }
+
+  scope(initialContext?: Record<string, unknown>): Scope {
+    return createScope(this.impl, initialContext, this.properties)
   }
 
   isEnabledFor(level: LogLevel): boolean {
@@ -466,6 +475,10 @@ class DefaultLogger implements Logger {
 
   with(properties: Record<string, unknown>): Logger {
     return new LoggerCtx(this.impl, { ...properties })
+  }
+
+  scope(initialContext?: Record<string, unknown>): Scope {
+    return createScope(this.impl, initialContext)
   }
 
   isEnabledFor(level: LogLevel): boolean {
