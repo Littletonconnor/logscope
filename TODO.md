@@ -217,30 +217,30 @@ The foundation types that everything else builds on. Small, self-contained, easy
 
 ---
 
-## Phase 2: Filters
+## Phase 2: Filters ✅
 
 Simple predicate functions. This module is intentionally tiny — the power comes from composition.
 
 ### `filter.ts`
 
-- [ ] Define `Filter` type: `(record: LogRecord) => boolean`
-- [ ] Define `FilterLike` type: `Filter | LogLevel | null`
-- [ ] `toFilter(filterLike)` — normalizes FilterLike → Filter:
+- [x] Define `Filter` type: `(record: LogRecord) => boolean`
+- [x] Define `FilterLike` type: `Filter | LogLevel | null`
+- [x] `toFilter(filterLike)` — normalizes FilterLike → Filter:
   - Function → return as-is
   - LogLevel string → `getLevelFilter(level)`
   - `null` → `() => false` (reject everything)
-- [ ] `getLevelFilter(level)` — returns a filter that accepts records at or above the given level
+- [x] `getLevelFilter(level)` — returns a filter that accepts records at or above the given level
 
 **Performance note:** logtape optimizes `getLevelFilter` with explicit comparisons instead of `compareLogLevel()` for hot-path performance. For now, using `compareLogLevel` is fine — optimize later if profiling shows it matters.
 
 ### Tests (`filter.test.ts`)
 
-- [ ] Level filter accepts records at the specified level and above
-- [ ] Level filter rejects records below the specified level
-- [ ] `toFilter` with a function passes it through unchanged
-- [ ] `toFilter` with `null` rejects everything
-- [ ] `toFilter` with a LogLevel string creates a level filter
-- [ ] `getLevelFilter("trace")` accepts everything
+- [x] Level filter accepts records at the specified level and above
+- [x] Level filter rejects records below the specified level
+- [x] `toFilter` with a function passes it through unchanged
+- [x] `toFilter` with `null` rejects everything
+- [x] `toFilter` with a LogLevel string creates a level filter
+- [x] `getLevelFilter("trace")` accepts everything
 
 **Reference:** `~/oss/logtape/packages/logtape/src/filter.ts` (~64 lines)
 
