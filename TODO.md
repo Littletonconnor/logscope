@@ -389,7 +389,7 @@ The heart of the library. Implements the tree structure, sink dispatch, and publ
   3. Tagged template literal: `` log.info`Hello ${name}` `` (stretch goal — can defer)
 - [x] `child(subcategory: string)` — returns Logger for `[...parentCategory, subcategory]`
 - [x] `with(properties)` — returns LoggerCtx wrapping same LoggerImpl with extra properties (AD-2)
-- [ ] `scope(initialContext?)` — creates a Scope (Phase 7, but define the method signature here)
+- [x] `scope(initialContext?)` — creates a Scope (Phase 7, but define the method signature here)
 - [x] `isEnabledFor(level)` — checks if any sinks exist for this level (for conditional expensive computation)
 
 ### `logger.ts` — LoggerCtx (contextual wrapper)
@@ -476,13 +476,13 @@ The `configure()` function wires the tree. Only called by app developers, never 
 
 ---
 
-## Phase 8: Scoped Wide Events
+## Phase 8: Scoped Wide Events ✅
 
 The accumulate-then-emit pattern. This is logscope's unique value proposition — combining logtape's library-first architecture with evlog's wide event model.
 
 ### `scope.ts`
 
-- [ ] Define `Scope` interface:
+- [x] Define `Scope` interface:
   ```typescript
   interface Scope {
     set(data: Record<string, unknown>): void
@@ -493,24 +493,24 @@ The accumulate-then-emit pattern. This is logscope's unique value proposition �
     getContext(): Record<string, unknown>
   }
   ```
-- [ ] `createScope(logger, initialContext?)` — internal factory (called by `logger.scope()`)
-- [ ] Internal state: `context`, `startTime`, `hasError`, `hasWarn`, `requestLogs[]`
-- [ ] `.set(data)` — deep-merges into accumulated context (new data wins, AD-9)
-- [ ] `.error(error, ctx?)` — sets `hasError = true`, extracts error properties (name, message, stack, cause), deep-merges
-- [ ] `.warn(message, ctx?)` — sets `hasWarn = true`, adds to `requestLogs` array
-- [ ] `.info(message, ctx?)` — adds to `requestLogs` array
-- [ ] `.emit(overrides?)`:
+- [x] `createScope(logger, initialContext?)` — internal factory (called by `logger.scope()`)
+- [x] Internal state: `context`, `startTime`, `hasError`, `hasWarn`, `requestLogs[]`
+- [x] `.set(data)` — deep-merges into accumulated context (new data wins, AD-9)
+- [x] `.error(error, ctx?)` — sets `hasError = true`, extracts error properties (name, message, stack, cause), deep-merges
+- [x] `.warn(message, ctx?)` — sets `hasWarn = true`, adds to `requestLogs` array
+- [x] `.info(message, ctx?)` — adds to `requestLogs` array
+- [x] `.emit(overrides?)`:
   1. Calculate `duration` from `startTime`
   2. Determine level: error if `hasError`, warning if `hasWarn`, else info
   3. Merge `overrides` into context
   4. Create LogRecord with all accumulated properties + duration + requestLogs
   5. Emit through the logger's normal dispatch (respects tree, sinks, filters)
-- [ ] `.getContext()` — returns a snapshot (clone) of current accumulated context
-- [ ] Scope inherits the logger's category and any `.with()` context
+- [x] `.getContext()` — returns a snapshot (clone) of current accumulated context
+- [x] Scope inherits the logger's category and any `.with()` context
 
 ### `deepMerge` utility (in `util.ts` or `scope.ts`)
 
-- [ ] Implement `deepMerge(target, source)` — deep merge where source values win:
+- [x] Implement `deepMerge(target, source)` — deep merge where source values win:
   - Primitive values: source wins
   - Arrays: source replaces (no concat — keeps semantics simple)
   - Objects: recursively merge
@@ -518,19 +518,19 @@ The accumulate-then-emit pattern. This is logscope's unique value proposition �
 
 ### Tests (`scope.test.ts`)
 
-- [ ] `set()` accumulates context across multiple calls
-- [ ] `set()` deep-merges: `set({ user: { id: '1' } })` + `set({ user: { name: 'Alice' } })` → `{ user: { id: '1', name: 'Alice' } }`
-- [ ] `set()` new values win: `set({ x: 1 })` + `set({ x: 2 })` → `{ x: 2 }`
-- [ ] `emit()` produces one LogRecord with all accumulated data
-- [ ] `emit()` includes `duration` in properties (ms since scope creation)
-- [ ] `emit()` level is `error` when `.error()` was called
-- [ ] `emit()` level is `warning` when `.warn()` was called (no error)
-- [ ] `emit()` level is `info` by default
-- [ ] `error()` extracts Error properties (name, message, stack)
-- [ ] `getContext()` returns a snapshot that doesn't mutate when `set()` is called again
-- [ ] Scope respects logger configuration (unconfigured logger → scope.emit() is silent)
-- [ ] Scope inherits `.with()` context from its parent logger
-- [ ] `requestLogs` are included in the emitted record
+- [x] `set()` accumulates context across multiple calls
+- [x] `set()` deep-merges: `set({ user: { id: '1' } })` + `set({ user: { name: 'Alice' } })` → `{ user: { id: '1', name: 'Alice' } }`
+- [x] `set()` new values win: `set({ x: 1 })` + `set({ x: 2 })` → `{ x: 2 }`
+- [x] `emit()` produces one LogRecord with all accumulated data
+- [x] `emit()` includes `duration` in properties (ms since scope creation)
+- [x] `emit()` level is `error` when `.error()` was called
+- [x] `emit()` level is `warning` when `.warn()` was called (no error)
+- [x] `emit()` level is `info` by default
+- [x] `error()` extracts Error properties (name, message, stack)
+- [x] `getContext()` returns a snapshot that doesn't mutate when `set()` is called again
+- [x] Scope respects logger configuration (unconfigured logger → scope.emit() is silent)
+- [x] Scope inherits `.with()` context from its parent logger
+- [x] `requestLogs` are included in the emitted record
 
 **Reference:** `~/oss/evlog/packages/evlog/src/logger.ts` (createRequestLogger)
 
@@ -712,7 +712,7 @@ Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
 Phase 5:  Formatters          ✅ Records become readable text, JSON, or colored output
 Phase 6:  Logger Core         ✅ createLogger(), child(), .with(), tree dispatch
 Phase 7:  Configuration       ✅ configure() wires loggers to sinks
-Phase 8:  Scoped Wide Events  → scope(), .set(), .emit() accumulation pattern
+Phase 8:  Scoped Wide Events  ✅ scope(), .set(), .emit() accumulation pattern
 Phase 9:  Context System      → withContext(), implicit/explicit context
 Phase 10: Public API          → Clean exports, tree-shaking, bundle size
 Phase 11: Docs & Polish       → README, JSDoc, LICENSE, v0.1.0
