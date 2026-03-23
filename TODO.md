@@ -246,14 +246,14 @@ Simple predicate functions. This module is intentionally tiny — the power come
 
 ---
 
-## Phase 3: Sinks
+## Phase 3: Sinks ✅
 
 Output destinations. A sink is `(record: LogRecord) => void` — the simplest possible contract. Custom sinks are one-liners.
 
 ### `sink.ts`
 
-- [ ] Define `Sink` type: `(record: LogRecord) => void`
-- [ ] `getConsoleSink(options?)` — maps levels to console methods:
+- [x] Define `Sink` type: `(record: LogRecord) => void`
+- [x] `getConsoleSink(options?)` — maps levels to console methods:
   - `trace` → `console.debug`
   - `debug` → `console.debug`
   - `info` → `console.info`
@@ -262,7 +262,7 @@ Output destinations. A sink is `(record: LogRecord) => void` — the simplest po
   - `fatal` → `console.error`
   - Accepts an optional `formatter: TextFormatter` to control output format
   - Default format: `"TIMESTAMP [LEVEL] category: message {properties}"`
-- [ ] `withFilter(sink, filter)` — returns a new Sink that only forwards records passing the filter
+- [x] `withFilter(sink, filter)` — returns a new Sink that only forwards records passing the filter
 
 **Out of scope for Phase 3** (designed-for, built later):
 
@@ -273,13 +273,13 @@ Output destinations. A sink is `(record: LogRecord) => void` — the simplest po
 
 ### Tests (`sink.test.ts`)
 
-- [ ] Console sink calls `console.info` for info-level records
-- [ ] Console sink calls `console.error` for error-level records
-- [ ] Console sink calls `console.warn` for warning-level records
-- [ ] Console sink with custom formatter uses the formatter's output
-- [ ] `withFilter` blocks records that fail the filter
-- [ ] `withFilter` passes records that satisfy the filter
-- [ ] Custom sink (just a function) receives the full LogRecord
+- [x] Console sink calls `console.info` for info-level records
+- [x] Console sink calls `console.error` for error-level records
+- [x] Console sink calls `console.warn` for warning-level records
+- [x] Console sink with custom formatter uses the formatter's output
+- [x] `withFilter` blocks records that fail the filter
+- [x] `withFilter` passes records that satisfy the filter
+- [x] Custom sink (just a function) receives the full LogRecord
 
 **Reference:** `~/oss/logtape/packages/logtape/src/sink.ts`
 
@@ -707,7 +707,7 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 Phase 0:  Setup               ✅ Can build and test
 Phase 1:  Levels & Records    → Foundation types exist
 Phase 2:  Filters             → Can filter records by level or custom predicate
-Phase 3:  Sinks               → Can output records (console, custom functions)
+Phase 3:  Sinks               ✅ Can output records (console, custom functions)
 Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
 Phase 5:  Formatters          → Records become readable text, JSON, or colored output
 Phase 6:  Logger Core         → createLogger(), child(), .with(), tree dispatch
