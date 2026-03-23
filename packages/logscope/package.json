@@ -12,6 +12,15 @@
   },
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
+  "imports": {
+    "#util": {
+      "node": "./dist/util.node.js",
+      "bun": "./dist/util.node.js",
+      "deno": "./dist/util.deno.js",
+      "browser": "./dist/util.js",
+      "default": "./dist/util.js"
+    }
+  },
   "files": [
     "dist"
   ],
