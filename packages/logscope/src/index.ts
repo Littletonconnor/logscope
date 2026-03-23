@@ -32,3 +32,7 @@ export type {
   JsonFormatterOptions,
   AnsiColorFormatterOptions,
 } from './formatter.ts'
+
+// Logger
+export { createLogger } from './logger.ts'
+export type { Logger } from './logger.ts'

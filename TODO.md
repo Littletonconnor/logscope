@@ -354,13 +354,13 @@ Transform LogRecords into human-readable or machine-readable output. Depend on `
 
 ---
 
-## Phase 6: Logger Core
+## Phase 6: Logger Core ✅
 
 The heart of the library. Implements the tree structure, sink dispatch, and public API.
 
 ### `logger.ts` — LoggerImpl (internal)
 
-- [ ] `LoggerImpl` class — the tree node:
+- [x] `LoggerImpl` class — the tree node:
   ```typescript
   class LoggerImpl {
     readonly parent: LoggerImpl | null
@@ -372,52 +372,52 @@ The heart of the library. Implements the tree structure, sink dispatch, and publ
     lowestLevel: LogLevel | null
   }
   ```
-- [ ] Singleton root via `Symbol.for("logscope.rootLogger")` on `globalThis` (AD-1)
-- [ ] `getChild(subcategory)` — creates or retrieves child node, uses WeakRef (AD-4)
-- [ ] `*getSinks(level)` — generator walking up tree, yielding sinks (AD-5)
-- [ ] `filter(record)` — walks up tree checking filters (AD-7)
-- [ ] `emit(record, bypassSinks?)` — constructs full record, checks filters, dispatches to sinks with error handling (AD-6)
-- [ ] `resetDescendants()` — recursively clears sinks/filters from all descendants (for `reset()`)
-- [ ] Static `getLogger(category)` — navigates from root to create/find the LoggerImpl for a category
+- [x] Singleton root via `Symbol.for("logscope.rootLogger")` on `globalThis` (AD-1)
+- [x] `getChild(subcategory)` — creates or retrieves child node, uses WeakRef (AD-4)
+- [x] `*getSinks(level)` — generator walking up tree, yielding sinks (AD-5)
+- [x] `filter(record)` — walks up tree checking filters (AD-7)
+- [x] `emit(record, bypassSinks?)` — constructs full record, checks filters, dispatches to sinks with error handling (AD-6)
+- [x] `resetDescendants()` — recursively clears sinks/filters from all descendants (for `reset()`)
+- [x] Static `getLogger(category)` — navigates from root to create/find the LoggerImpl for a category
 
 ### `logger.ts` — Logger (public interface)
 
-- [ ] `Logger` interface with methods: `trace`, `debug`, `info`, `warn`/`warning`, `error`, `fatal`
-- [ ] Each method supports overloads:
+- [x] `Logger` interface with methods: `trace`, `debug`, `info`, `warn`/`warning`, `error`, `fatal`
+- [x] Each method supports overloads:
   1. `(message: string, properties?: Record<string, unknown>)` — string + optional props
   2. `(properties: Record<string, unknown>)` — properties-only (structured log)
   3. Tagged template literal: `` log.info`Hello ${name}` `` (stretch goal — can defer)
-- [ ] `child(subcategory: string)` — returns Logger for `[...parentCategory, subcategory]`
-- [ ] `with(properties)` — returns LoggerCtx wrapping same LoggerImpl with extra properties (AD-2)
+- [x] `child(subcategory: string)` — returns Logger for `[...parentCategory, subcategory]`
+- [x] `with(properties)` — returns LoggerCtx wrapping same LoggerImpl with extra properties (AD-2)
 - [ ] `scope(initialContext?)` — creates a Scope (Phase 7, but define the method signature here)
-- [ ] `isEnabledFor(level)` — checks if any sinks exist for this level (for conditional expensive computation)
+- [x] `isEnabledFor(level)` — checks if any sinks exist for this level (for conditional expensive computation)
 
 ### `logger.ts` — LoggerCtx (contextual wrapper)
 
-- [ ] Wraps a LoggerImpl with extra `properties: Record<string, unknown>`
-- [ ] All log methods merge ctx properties into the LogRecord's properties
-- [ ] `child()` on LoggerCtx returns a new LoggerCtx wrapping the child LoggerImpl with the _same_ properties
-- [ ] `with()` on LoggerCtx returns a new LoggerCtx with merged properties
+- [x] Wraps a LoggerImpl with extra `properties: Record<string, unknown>`
+- [x] All log methods merge ctx properties into the LogRecord's properties
+- [x] `child()` on LoggerCtx returns a new LoggerCtx wrapping the child LoggerImpl with the _same_ properties
+- [x] `with()` on LoggerCtx returns a new LoggerCtx with merged properties
 
 ### `logger.ts` — Public factory
 
-- [ ] `createLogger(category: string | readonly string[])` — the public entry point
+- [x] `createLogger(category: string | readonly string[])` — the public entry point
   - String input → `["my-app"]`
   - Array input → `["my-app", "db"]`
   - Returns a Logger backed by the LoggerImpl at that category in the singleton tree
 
 ### Tests (`logger.test.ts`)
 
-- [ ] **Library-first**: Unconfigured logger produces zero output and zero errors
-- [ ] **Library-first**: Unconfigured logger methods do not throw
-- [ ] Logger dispatches records to sinks attached to its tree node
-- [ ] Child logger has correct category: `createLogger("app").child("db")` → `["app", "db"]`
-- [ ] Records bubble up to parent sinks (hierarchical dispatch)
-- [ ] `.with({ requestId })` attaches properties to all subsequent logs
-- [ ] `.with()` on child preserves parent context: `log.with({ a: 1 }).child("db").info(...)` has `a: 1`
-- [ ] `isEnabledFor` returns false when no sinks exist, true when they do
-- [ ] Multiple `createLogger("same")` calls return loggers backed by the same tree node
-- [ ] Singleton root: `Symbol.for("logscope.rootLogger")` on `globalThis` is reused
+- [x] **Library-first**: Unconfigured logger produces zero output and zero errors
+- [x] **Library-first**: Unconfigured logger methods do not throw
+- [x] Logger dispatches records to sinks attached to its tree node
+- [x] Child logger has correct category: `createLogger("app").child("db")` → `["app", "db"]`
+- [x] Records bubble up to parent sinks (hierarchical dispatch)
+- [x] `.with({ requestId })` attaches properties to all subsequent logs
+- [x] `.with()` on child preserves parent context: `log.with({ a: 1 }).child("db").info(...)` has `a: 1`
+- [x] `isEnabledFor` returns false when no sinks exist, true when they do
+- [x] Multiple `createLogger("same")` calls return loggers backed by the same tree node
+- [x] Singleton root: `Symbol.for("logscope.rootLogger")` on `globalThis` is reused
 
 **Reference:** `~/oss/logtape/packages/logtape/src/logger.ts`
 
@@ -710,7 +710,7 @@ Phase 2:  Filters             → Can filter records by level or custom predicat
 Phase 3:  Sinks               ✅ Can output records (console, custom functions)
 Phase 4:  Cross-Runtime Utils → inspect() works on Node/Deno/browser
 Phase 5:  Formatters          ✅ Records become readable text, JSON, or colored output
-Phase 6:  Logger Core         → createLogger(), child(), .with(), tree dispatch
+Phase 6:  Logger Core         ✅ createLogger(), child(), .with(), tree dispatch
 Phase 7:  Configuration       → configure() wires loggers to sinks
 Phase 8:  Scoped Wide Events  → scope(), .set(), .emit() accumulation pattern
 Phase 9:  Context System      → withContext(), implicit/explicit context
