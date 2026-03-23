@@ -18,3 +18,17 @@ export type { Filter, FilterLike } from './filter.ts'
 // Sink
 export { getConsoleSink, withFilter } from './sink.ts'
 export type { Sink, ConsoleSinkOptions } from './sink.ts'
+
+// Formatter
+export {
+  renderMessage,
+  getTextFormatter,
+  getJsonFormatter,
+  getAnsiColorFormatter,
+} from './formatter.ts'
+export type {
+  TextFormatter,
+  TextFormatterOptions,
+  JsonFormatterOptions,
+  AnsiColorFormatterOptions,
+} from './formatter.ts'
