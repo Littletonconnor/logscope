@@ -172,24 +172,24 @@ Each file exports an `inspect(value): string` function. Node uses `util.inspect`
 
 ---
 
-## Phase 1: Log Levels & Records
+## Phase 1: Log Levels & Records ✅
 
 The foundation types that everything else builds on. Small, self-contained, easy to get right first.
 
 ### `level.ts`
 
-- [ ] Define `logLevels` const array: `["trace", "debug", "info", "warning", "error", "fatal"] as const`
-- [ ] Define `LogLevel` type from the array: `typeof logLevels[number]`
-- [ ] `compareLogLevel(a, b)` — returns negative/zero/positive (uses `indexOf`)
-- [ ] `parseLogLevel(str)` — case-insensitive string → LogLevel (throws on invalid)
-- [ ] `isLogLevel(str)` — type guard (case-sensitive, returns `str is LogLevel`)
-- [ ] `getLogLevels()` — returns a copy of the levels array
+- [x] Define `logLevels` const array: `["trace", "debug", "info", "warning", "error", "fatal"] as const`
+- [x] Define `LogLevel` type from the array: `typeof logLevels[number]`
+- [x] `compareLogLevel(a, b)` — returns negative/zero/positive (uses `indexOf`)
+- [x] `parseLogLevel(str)` — case-insensitive string → LogLevel (throws on invalid)
+- [x] `isLogLevel(str)` — type guard (case-sensitive, returns `str is LogLevel`)
+- [x] `getLogLevels()` — returns a copy of the levels array
 
 **Design note:** Keep this module tiny (~40 lines). logtape's is 64 lines. No classes, just functions and types.
 
 ### `record.ts`
 
-- [ ] Define `LogRecord` interface:
+- [x] Define `LogRecord` interface:
   ```typescript
   interface LogRecord {
     readonly category: readonly string[]
@@ -207,11 +207,11 @@ The foundation types that everything else builds on. Small, self-contained, easy
 
 ### Tests (`level.test.ts`)
 
-- [ ] `compareLogLevel` returns correct ordering for all level pairs
-- [ ] `parseLogLevel` handles case-insensitive input ("INFO" → "info")
-- [ ] `parseLogLevel` throws on invalid input
-- [ ] `isLogLevel` returns true for valid levels, false for invalid
-- [ ] `getLogLevels` returns a copy (mutating doesn't affect original)
+- [x] `compareLogLevel` returns correct ordering for all level pairs
+- [x] `parseLogLevel` handles case-insensitive input ("INFO" → "info")
+- [x] `parseLogLevel` throws on invalid input
+- [x] `isLogLevel` returns true for valid levels, false for invalid
+- [x] `getLogLevels` returns a copy (mutating doesn't affect original)
 
 **Reference:** `~/oss/logtape/packages/logtape/src/level.ts` (~64 lines)
 
