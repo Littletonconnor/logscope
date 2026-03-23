@@ -6,13 +6,13 @@ This document maps out all the work needed to build logscope from scratch. Each 
 
 ## Phase 0: Project Setup
 
-- [ ] Set up TypeScript configuration (`tsconfig.json` at root + package level)
-- [ ] Set up tsdown build configuration for the core package
-- [ ] Set up ESLint + Prettier
-- [ ] Create `packages/logscope/package.json` with proper exports map
-- [ ] Create `packages/logscope/src/index.ts` barrel export
-- [ ] Verify `pnpm build` and `pnpm test` work (even with empty source)
-- [ ] Add a basic `node:test` test file to confirm testing works
+- [x] Set up TypeScript configuration (`tsconfig.json` at root + package level)
+- [x] Set up tsdown build configuration for the core package
+- [x] Set up ESLint + Prettier
+- [x] Create `packages/logscope/package.json` with proper exports map
+- [x] Create `packages/logscope/src/index.ts` barrel export
+- [x] Verify `pnpm build` and `pnpm test` work (even with empty source)
+- [x] Add a basic `node:test` test file to confirm testing works
 
 ---
 
@@ -55,6 +55,7 @@ Output destinations. Keep it dead simple—a sink is just a function.
 - [ ] **Tests** - withFilter correctly gates records
 
 **Later (not Phase 3)**:
+
 - Stream sink (`getStreamSink`)
 - Non-blocking/buffered mode
 - `fromAsyncSink` wrapper
@@ -207,38 +208,46 @@ Wire everything together into a clean public API.
 These are out of scope for the initial release but designed-for in the architecture:
 
 ### Stream Sink
+
 - [ ] `getStreamSink(stream)` - WritableStream-based sink
 - [ ] Non-blocking mode with buffered writes
 
 ### Async Sink Support
+
 - [ ] `fromAsyncSink(fn)` - wrap async functions as sinks
 - [ ] Proper disposal with Symbol.asyncDispose
 
 ### Pipeline Utilities
+
 - [ ] `createPipeline(options)` - batching, retry, buffer management
 - [ ] Composable with any sink
 - [ ] Exponential/linear/fixed backoff strategies
 
 ### Sampling
+
 - [ ] Head sampling (probabilistic per-level)
 - [ ] Tail sampling (force-keep based on outcome)
 
 ### Framework Integrations (separate packages)
+
 - [ ] `@logscope/hono` - Hono middleware
 - [ ] `@logscope/express` - Express middleware
 - [ ] `@logscope/next` - Next.js integration
 
 ### Sink Adapters (separate packages)
+
 - [ ] `@logscope/axiom` - Axiom drain
 - [ ] `@logscope/otlp` - OpenTelemetry drain
 - [ ] `@logscope/sentry` - Sentry integration
 
 ### Browser-Specific Features
+
 - [ ] `sendBeacon` drain for page unload reliability
 - [ ] `keepalive` fetch for page transitions
 - [ ] Visibility change auto-flush
 
 ### Pretty Dev Output
+
 - [ ] Tree-formatted console output (like evlog's pretty mode)
 - [ ] Automatic dev/prod detection
 

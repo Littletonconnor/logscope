@@ -21,7 +21,7 @@ Zero-dependency, universal, library-first structured logging with scoped wide ev
 console.log('Request received')
 console.log('User:', user.id)
 console.log('Cart loaded, items:', cart.items.length)
-console.log('Payment failed')  // Good luck correlating this at 3am
+console.log('Payment failed') // Good luck correlating this at 3am
 ```
 
 ### The Solution
@@ -60,7 +60,7 @@ export function doSomething() {
 }
 ```
 
-If the application *does* configure logscope, those logs become visible and routable:
+If the application _does_ configure logscope, those logs become visible and routable:
 
 ```typescript
 // In the application entry point
@@ -103,9 +103,7 @@ await configure({
   sinks: {
     console: getConsoleSink(),
   },
-  loggers: [
-    { category: 'my-app', level: 'debug', sinks: ['console'] },
-  ],
+  loggers: [{ category: 'my-app', level: 'debug', sinks: ['console'] }],
 })
 ```
 
@@ -157,15 +155,15 @@ Loggers have categories that form a tree. Child loggers inherit from parents:
 
 ```typescript
 const appLog = createLogger('my-app')
-const dbLog = appLog.child('db')       // category: ['my-app', 'db']
-const authLog = appLog.child('auth')   // category: ['my-app', 'auth']
+const dbLog = appLog.child('db') // category: ['my-app', 'db']
+const authLog = appLog.child('auth') // category: ['my-app', 'auth']
 
 // Configure different levels per category
 await configure({
   sinks: { console: getConsoleSink() },
   loggers: [
     { category: 'my-app', level: 'info', sinks: ['console'] },
-    { category: ['my-app', 'db'], level: 'warn' },  // only warnings+ from DB
+    { category: ['my-app', 'db'], level: 'warn' }, // only warnings+ from DB
   ],
 })
 ```
@@ -177,8 +175,8 @@ Attach reusable properties to a logger:
 ```typescript
 const reqLog = log.with({ requestId: 'req_abc', userId: '123' })
 
-reqLog.info('processing started')   // requestId and userId attached
-reqLog.info('step completed')       // same context, no repetition
+reqLog.info('processing started') // requestId and userId attached
+reqLog.info('step completed') // same context, no repetition
 ```
 
 ### Sinks
@@ -205,9 +203,7 @@ await configure({
       })
     },
   },
-  loggers: [
-    { category: 'my-app', sinks: ['myApi'] },
-  ],
+  loggers: [{ category: 'my-app', sinks: ['myApi'] }],
 })
 ```
 
@@ -215,14 +211,14 @@ await configure({
 
 Six levels, from lowest to highest severity:
 
-| Level | Use Case |
-|-------|----------|
-| `trace` | Fine-grained diagnostic info |
-| `debug` | Development-time debugging |
-| `info` | Normal operational events |
+| Level     | Use Case                             |
+| --------- | ------------------------------------ |
+| `trace`   | Fine-grained diagnostic info         |
+| `debug`   | Development-time debugging           |
+| `info`    | Normal operational events            |
 | `warning` | Something unexpected but recoverable |
-| `error` | Something failed |
-| `fatal` | Application cannot continue |
+| `error`   | Something failed                     |
+| `fatal`   | Application cannot continue          |
 
 ### Filters
 
@@ -236,9 +232,7 @@ await configure({
       return record.properties.duration > 100
     },
   },
-  loggers: [
-    { category: 'my-app', sinks: ['console'], filters: ['slowOnly'] },
-  ],
+  loggers: [{ category: 'my-app', sinks: ['console'], filters: ['slowOnly'] }],
 })
 ```
 
