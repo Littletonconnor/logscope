@@ -163,7 +163,7 @@ await configure({
   sinks: { console: getConsoleSink() },
   loggers: [
     { category: 'my-app', level: 'info', sinks: ['console'] },
-    { category: ['my-app', 'db'], level: 'warn' }, // only warnings+ from DB
+    { category: ['my-app', 'db'], level: 'warning', sinks: ['console'], parentSinks: 'override' }, // only warnings+ from DB
   ],
 })
 ```
@@ -178,6 +178,32 @@ const reqLog = log.with({ requestId: 'req_abc', userId: '123' })
 reqLog.info('processing started') // requestId and userId attached
 reqLog.info('step completed') // same context, no repetition
 ```
+
+### Implicit Context (`withContext`)
+
+Automatically attach properties to all logs within a callback scope — powered by `AsyncLocalStorage` on Node.js:
+
+```typescript
+import { configure, createLogger, withContext, getConsoleSink } from 'logscope'
+import { AsyncLocalStorage } from 'node:async_hooks'
+
+await configure({
+  sinks: { console: getConsoleSink() },
+  loggers: [{ category: 'my-app', level: 'debug', sinks: ['console'] }],
+  contextLocalStorage: new AsyncLocalStorage(),
+})
+
+const log = createLogger('my-app')
+
+withContext({ requestId: 'req_abc' }, () => {
+  log.info('handling request') // requestId automatically attached
+  withContext({ userId: '123' }, () => {
+    log.info('processing') // both requestId and userId attached
+  })
+})
+```
+
+Context priority (highest wins): message properties > `.with()` > `withContext()`
 
 ### Sinks
 
@@ -205,6 +231,31 @@ await configure({
   },
   loggers: [{ category: 'my-app', sinks: ['myApi'] }],
 })
+```
+
+### Formatters
+
+Control how log records are rendered. Pass a formatter to `getConsoleSink()` or use them in custom sinks:
+
+```typescript
+import {
+  getConsoleSink,
+  getTextFormatter,
+  getJsonFormatter,
+  getAnsiColorFormatter,
+} from 'logscope'
+
+// Human-readable text (default)
+// → 2024-01-15T10:30:00.000Z [INFO] my-app · db: query executed {table: "users", ms: 42}
+getConsoleSink({ formatter: getTextFormatter() })
+
+// NDJSON — one JSON object per line, ideal for log aggregators
+// → {"@timestamp":"...","level":"INFO","logger":"my-app.db","message":"...","properties":{...}}
+getConsoleSink({ formatter: getJsonFormatter() })
+
+// Colored terminal output using ANSI escape codes
+// Level colors: trace=gray, debug=cyan, info=green, warning=yellow, error=red, fatal=red+bold
+getConsoleSink({ formatter: getAnsiColorFormatter() })
 ```
 
 ### Log Levels
