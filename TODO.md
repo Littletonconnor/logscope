@@ -608,19 +608,19 @@ Wire everything into a clean, tree-shakeable public API.
 
 - [x] Full end-to-end: `configure()` → `createLogger()` → `log.info()` → sink receives record
 - [x] Library consumer simulation: import logscope, use without configuring → zero output
-- [ ] Verify bundle size is reasonable (target: <10KB minified+gzipped for core)
+- [x] Verify bundle size is reasonable (target: <10KB minified+gzipped for core)
 - [x] Verify dual ESM/CJS output works
 
 ---
 
-## Phase 11: Documentation & Polish
+## Phase 11: Documentation & Polish ✅
 
-- [ ] Finalize README.md with accurate API docs and realistic examples
-- [ ] Add JSDoc comments to all public API functions and types
-- [ ] Add CHANGELOG.md (v0.1.0)
-- [ ] Add LICENSE (MIT)
-- [ ] Verify all README code examples actually compile and run
-- [ ] Add `"repository"`, `"keywords"`, `"description"` to package.json
+- [x] Finalize README.md with accurate API docs and realistic examples
+- [x] Add JSDoc comments to all public API functions and types
+- [x] Add CHANGELOG.md (v0.1.0)
+- [x] Add LICENSE (MIT)
+- [x] Verify all README code examples actually compile and run
+- [x] Add `"repository"`, `"keywords"`, `"description"` to package.json
 
 ---
 
@@ -715,7 +715,7 @@ Phase 7:  Configuration       ✅ configure() wires loggers to sinks
 Phase 8:  Scoped Wide Events  ✅ scope(), .set(), .emit() accumulation pattern
 Phase 9:  Context System      ✅ withContext(), implicit/explicit context
 Phase 10: Public API          ✅ Clean exports, tree-shaking, bundle size
-Phase 11: Docs & Polish       → README, JSDoc, LICENSE, v0.1.0
+Phase 11: Docs & Polish       ✅ README, JSDoc, LICENSE, v0.1.0
 ```
 
 Each phase ends with passing tests and a working (partial) library. Phases 1-3 are small and fast. Phase 6 is the biggest. Phase 8 is the most novel.
