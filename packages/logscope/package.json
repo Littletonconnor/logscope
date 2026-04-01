@@ -2,6 +2,25 @@
   "name": "logscope",
   "version": "0.0.1",
   "description": "Zero-dependency, universal, library-first structured logging with scoped wide events.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Littletonconnor/logscope.git",
+    "directory": "packages/logscope"
+  },
+  "keywords": [
+    "logging",
+    "logger",
+    "structured-logging",
+    "wide-events",
+    "log",
+    "zero-dependency",
+    "typescript",
+    "library-first",
+    "scoped-logging",
+    "universal"
+  ],
+  "author": "Connor Littleton",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
