@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, mock } from 'node:test'
 import assert from 'node:assert'
-import { getConsoleSink, withFilter, fromAsyncSink } from './sink.ts'
+import { getConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
 import type { Sink } from './sink.ts'
 import type { LogRecord } from './record.ts'
 import type { LogLevel } from './level.ts'
@@ -193,6 +193,102 @@ describe('withFilter', () => {
 
     filtered(makeRecord('fatal'))
     assert.strictEqual(calls.length, 0)
+  })
+})
+
+describe('getStreamSink', () => {
+  function collectStream(): { stream: WritableStream<Uint8Array>; chunks: Uint8Array[] } {
+    const chunks: Uint8Array[] = []
+    const stream = new WritableStream<Uint8Array>({
+      write(chunk) {
+        chunks.push(chunk)
+      },
+    })
+    return { stream, chunks }
+  }
+
+  function decodeChunks(chunks: Uint8Array[]): string {
+    const decoder = new TextDecoder()
+    return chunks.map((c) => decoder.decode(c)).join('')
+  }
+
+  it('writes formatted records to the stream', async () => {
+    const { stream, chunks } = collectStream()
+    const sink = getStreamSink(stream, {
+      formatter: (record) => `${record.level}: ${record.rawMessage}`,
+    })
+
+    sink(makeRecord('info', { rawMessage: 'hello' }))
+    sink(makeRecord('error', { rawMessage: 'oops' }))
+    await sink.flush()
+
+    const output = decodeChunks(chunks)
+    assert.ok(output.includes('info: hello\n'))
+    assert.ok(output.includes('error: oops\n'))
+  })
+
+  it('preserves write ordering', async () => {
+    const { stream, chunks } = collectStream()
+    const sink = getStreamSink(stream, {
+      formatter: (record) => `${record.properties.seq}`,
+    })
+
+    sink(makeRecord('info', { properties: { seq: 1 } }))
+    sink(makeRecord('info', { properties: { seq: 2 } }))
+    sink(makeRecord('info', { properties: { seq: 3 } }))
+    await sink.flush()
+
+    const output = decodeChunks(chunks)
+    assert.strictEqual(output, '1\n2\n3\n')
+  })
+
+  it('appends a newline after each record', async () => {
+    const { stream, chunks } = collectStream()
+    const sink = getStreamSink(stream, {
+      formatter: () => 'line',
+    })
+
+    sink(makeRecord('info'))
+    await sink.flush()
+
+    const output = decodeChunks(chunks)
+    assert.strictEqual(output, 'line\n')
+  })
+
+  it('uses default text formatter when none provided', async () => {
+    const { stream, chunks } = collectStream()
+    const sink = getStreamSink(stream)
+
+    sink(makeRecord('info', {
+      category: ['app'],
+      message: ['test msg'],
+      rawMessage: 'test msg',
+      timestamp: new Date('2024-01-15T10:30:00.000Z').getTime(),
+    }))
+    await sink.flush()
+
+    const output = decodeChunks(chunks)
+    assert.ok(output.includes('[INFO]'))
+    assert.ok(output.includes('test msg'))
+    assert.ok(output.includes('app'))
+  })
+
+  it('is a DisposableSink with flush and asyncDispose', async () => {
+    const { stream } = collectStream()
+    const sink = getStreamSink(stream, { formatter: () => 'x' })
+
+    assert.strictEqual(typeof sink.flush, 'function')
+    assert.strictEqual(typeof sink[Symbol.asyncDispose], 'function')
+
+    sink(makeRecord('info'))
+    await sink[Symbol.asyncDispose]()
+  })
+
+  it('is assignable to Sink type', () => {
+    const { stream } = collectStream()
+    const sink = getStreamSink(stream, { formatter: () => 'x' })
+    const regularSink: Sink = sink
+    assert.strictEqual(typeof regularSink, 'function')
   })
 })
 

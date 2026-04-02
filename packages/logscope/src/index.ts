@@ -16,8 +16,8 @@ export { getLevelFilter, toFilter } from './filter.ts'
 export type { Filter, FilterLike } from './filter.ts'
 
 // Sink
-export { getConsoleSink, withFilter, fromAsyncSink } from './sink.ts'
-export type { Sink, DisposableSink, ConsoleSinkOptions } from './sink.ts'
+export { getConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
+export type { Sink, DisposableSink, ConsoleSinkOptions, StreamSinkOptions } from './sink.ts'
 
 // Formatter
 export {

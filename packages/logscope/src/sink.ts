@@ -1,6 +1,7 @@
 import type { LogRecord } from './record.ts'
 import type { LogLevel } from './level.ts'
 import type { Filter, FilterLike } from './filter.ts'
+import type { TextFormatter } from './formatter.ts'
 import { toFilter } from './filter.ts'
 
 /**
@@ -108,6 +109,60 @@ export type DisposableSink = Sink & {
  * next sink invocation, which the logger's emit error handling will
  * catch and report to the meta logger.
  */
+/**
+ * Options for the stream sink.
+ */
+export interface StreamSinkOptions {
+  /**
+   * A formatter that converts a LogRecord into a string before writing.
+   * Defaults to the text formatter from `getTextFormatter()`.
+   */
+  formatter?: TextFormatter
+}
+
+/**
+ * Creates a sink that writes formatted log records to a {@link WritableStream}.
+ *
+ * Acquires a writer from the stream internally and writes each record as a
+ * UTF-8 encoded string followed by a newline. Built on {@link fromAsyncSink},
+ * so writes are ordered and the returned sink supports `flush()` and
+ * `Symbol.asyncDispose` for lifecycle management.
+ *
+ * Closing the writer (via `flush()` or disposal) does **not** close the
+ * underlying stream — the caller retains ownership of the stream.
+ */
+export function getStreamSink(stream: WritableStream, options?: StreamSinkOptions): DisposableSink {
+  // Lazy-load the formatter to avoid circular dependency with formatter.ts at
+  // module evaluation time. The import is cached after the first call.
+  let formatter: TextFormatter | undefined = options?.formatter
+  let encoder: TextEncoder | undefined
+
+  const writer = stream.getWriter()
+
+  const sink = fromAsyncSink(async (record: LogRecord) => {
+    if (formatter === undefined) {
+      const { getTextFormatter } = await import('./formatter.ts')
+      formatter = getTextFormatter()
+    }
+    if (encoder === undefined) {
+      encoder = new TextEncoder()
+    }
+    const text = formatter(record) + '\n'
+    await writer.write(encoder.encode(text))
+  })
+
+  // Wrap flush to also release the writer lock
+  const originalFlush = sink.flush
+  sink.flush = async () => {
+    await originalFlush()
+    writer.releaseLock()
+  }
+
+  sink[Symbol.asyncDispose] = sink.flush
+
+  return sink
+}
+
 export function fromAsyncSink(fn: (record: LogRecord) => Promise<void>): DisposableSink {
   let pending: Promise<void> = Promise.resolve()
 
