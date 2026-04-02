@@ -729,20 +729,20 @@ A Hono HTTP server with automatic request-scoped wide event logging.
 
 An Express server with the same patterns as Hono.
 
-- [ ] `package.json` with `express`, `@types/express`, `logscope`, `@logscope/express` dependencies
-- [ ] `README.md` with curl commands
-- [ ] `src/index.ts` — Express app demonstrating:
-  - [ ] `logscope()` middleware applied via `app.use()`
-  - [ ] `GET /` — baseline request logging
-  - [ ] `GET /users/:id` — `req.scope!.set()` with user context
-  - [ ] `POST /users` — JSON body parsing, scope accumulation
-  - [ ] `GET /slow` — simulated latency, duration tracking
-  - [ ] `GET /error` — error route with Express error handler middleware
-  - [ ] `req.requestLogger` usage for within-request logs
-  - [ ] `req.requestId` access
-  - [ ] Express error-handling middleware that catches and logs errors
-  - [ ] Console sink with `getAnsiColorFormatter()`
-- [ ] Runs via: `pnpm dev` → starts on port **3002**
+- [x] `package.json` with `express`, `@types/express`, `logscope`, `@logscope/express` dependencies
+- [x] `README.md` with curl commands
+- [x] `src/index.ts` — Express app demonstrating:
+  - [x] `logscope()` middleware applied via `app.use()`
+  - [x] `GET /` — baseline request logging
+  - [x] `GET /users/:id` — `req.scope!.set()` with user context
+  - [x] `POST /users` — JSON body parsing, scope accumulation
+  - [x] `GET /slow` — simulated latency, duration tracking
+  - [x] `GET /error` — error route with Express error handler middleware
+  - [x] `req.requestLogger` usage for within-request logs
+  - [x] `req.requestId` access
+  - [x] Express error-handling middleware that catches and logs errors
+  - [x] Console sink with `getAnsiColorFormatter()`
+- [x] Runs via: `pnpm dev` → starts on port **3002**
 
 ---
 
