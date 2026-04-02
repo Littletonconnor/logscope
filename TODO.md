@@ -705,23 +705,23 @@ Advanced core features in a single Node.js script.
 
 A Hono HTTP server with automatic request-scoped wide event logging.
 
-- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono` dependencies
-- [ ] `README.md` with curl commands to exercise every route
-- [ ] `src/index.ts` — Hono app demonstrating:
-  - [ ] `logscope()` middleware applied globally
-  - [ ] `GET /` — simple route, shows baseline request/response logging
-  - [ ] `GET /users/:id` — uses `c.get('scope').set()` to add user context
-  - [ ] `POST /users` — parses body, sets it on scope, shows request body logging
-  - [ ] `GET /slow` — simulated slow endpoint (`setTimeout`), shows duration in emitted event
-  - [ ] `GET /error` — throws an error, shows `scope.error()` auto-capture and error-level emit
-  - [ ] `GET /warn` — returns 4xx, shows warning-level scope emit
-  - [ ] Custom `getRequestContext` and `getResponseContext` extractors
-  - [ ] Handler using `c.get('requestLogger')` for within-request structured logs
-  - [ ] Handler using `c.get('requestId')` to show auto-generated request IDs
-  - [ ] Console sink with `getAnsiColorFormatter()` for colorful terminal output
-  - [ ] Pretty formatter showing tree-formatted wide event output
-- [ ] Runs via: `pnpm dev` → starts on port **3001**
-- [ ] Exercise via: `curl http://localhost:3001/users/42`, etc.
+- [x] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono` dependencies
+- [x] `README.md` with curl commands to exercise every route
+- [x] `src/index.ts` — Hono app demonstrating:
+  - [x] `logscope()` middleware applied globally
+  - [x] `GET /` — simple route, shows baseline request/response logging
+  - [x] `GET /users/:id` — uses `c.get('scope').set()` to add user context
+  - [x] `POST /users` — parses body, sets it on scope, shows request body logging
+  - [x] `GET /slow` — simulated slow endpoint (`setTimeout`), shows duration in emitted event
+  - [x] `GET /error` — throws an error, shows `scope.error()` auto-capture and error-level emit
+  - [x] `GET /warn` — returns 4xx, shows warning-level scope emit
+  - [x] Custom `getRequestContext` and `getResponseContext` extractors
+  - [x] Handler using `c.get('requestLogger')` for within-request structured logs
+  - [x] Handler using `c.get('requestId')` to show auto-generated request IDs
+  - [x] Console sink with `getAnsiColorFormatter()` for colorful terminal output
+  - [x] Pretty formatter showing tree-formatted wide event output
+- [x] Runs via: `pnpm dev` → starts on port **3001**
+- [x] Exercise via: `curl http://localhost:3001/users/42`, etc.
 
 ---
 

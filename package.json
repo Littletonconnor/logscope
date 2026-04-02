@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "size": "./scripts/check-size.sh",
     "example:01": "pnpm --filter example-core-basics dev",
-    "example:02": "pnpm --filter example-core-advanced dev"
+    "example:02": "pnpm --filter example-core-advanced dev",
+    "example:03": "pnpm --filter example-hono dev"
   },
   "repository": {
     "type": "git",
