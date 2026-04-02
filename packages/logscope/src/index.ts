@@ -16,8 +16,8 @@ export { getLevelFilter, toFilter } from './filter.ts'
 export type { Filter, FilterLike } from './filter.ts'
 
 // Sink
-export { getConsoleSink, withFilter } from './sink.ts'
-export type { Sink, ConsoleSinkOptions } from './sink.ts'
+export { getConsoleSink, getNonBlockingConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
+export type { Sink, DisposableSink, ConsoleSinkOptions, NonBlockingConsoleSinkOptions, StreamSinkOptions } from './sink.ts'
 
 // Formatter
 export {
@@ -43,6 +43,14 @@ export type { Config, LoggerConfig } from './config.ts'
 
 // Scope
 export type { Scope } from './scope.ts'
+
+// Pipeline
+export { createPipeline } from './pipeline.ts'
+export type { PipelineOptions, BackoffStrategy } from './pipeline.ts'
+
+// Sampling
+export { createSamplingFilter } from './sampling.ts'
+export type { SamplingFilterOptions, TailCondition } from './sampling.ts'
 
 // Context
 export { withContext } from './context.ts'
