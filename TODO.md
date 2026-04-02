@@ -665,7 +665,7 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 ### Framework Integrations (separate packages)
 
 - [x] `@logscope/hono` — Hono middleware (creates scope per request, emits on response)
-- [ ] `@logscope/express` — Express middleware
+- [x] `@logscope/express` — Express middleware
 - [ ] `@logscope/next` — Next.js integration with AsyncLocalStorage
 - [ ] `@logscope/nitro` — Nitro/Nuxt plugin
 
