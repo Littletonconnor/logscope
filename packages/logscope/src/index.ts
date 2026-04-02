@@ -25,12 +25,16 @@ export {
   getTextFormatter,
   getJsonFormatter,
   getAnsiColorFormatter,
+  getPrettyFormatter,
+  getAutoFormatter,
 } from './formatter.ts'
 export type {
   TextFormatter,
   TextFormatterOptions,
   JsonFormatterOptions,
   AnsiColorFormatterOptions,
+  PrettyFormatterOptions,
+  AutoFormatterOptions,
 } from './formatter.ts'
 
 // Logger
