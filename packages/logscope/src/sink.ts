@@ -75,6 +75,76 @@ export function getConsoleSink(options?: ConsoleSinkOptions): Sink {
 }
 
 /**
+ * Options for the non-blocking console sink.
+ */
+export interface NonBlockingConsoleSinkOptions {
+  /**
+   * A formatter that converts a LogRecord into a string for console output.
+   * If not provided, a simple default format is used.
+   */
+  formatter?: (record: LogRecord) => string
+}
+
+/**
+ * Creates a non-blocking console sink that buffers log output and drains
+ * it asynchronously via `setTimeout(0)`.
+ *
+ * Unlike {@link getConsoleSink}, which calls `console.*` synchronously on
+ * every log call, this sink batches writes and flushes them in a single
+ * macrotask. This yields the event loop between your application code and
+ * log I/O, preventing high-throughput logging from stalling request handling.
+ *
+ * Returns a {@link DisposableSink} — call `flush()` on shutdown to ensure
+ * all buffered output is written.
+ */
+export function getNonBlockingConsoleSink(options?: NonBlockingConsoleSinkOptions): DisposableSink {
+  const formatter = options?.formatter ?? defaultFormatter
+  const buffer: Array<{ method: 'debug' | 'info' | 'warn' | 'error'; text: string }> = []
+  let drainScheduled = false
+  let drainPromise: Promise<void> = Promise.resolve()
+  let resolveDrain: (() => void) | null = null
+
+  function drain() {
+    const batch = buffer.splice(0)
+    for (const { method, text } of batch) {
+      // eslint-disable-next-line no-console
+      console[method](text)
+    }
+    drainScheduled = false
+    if (resolveDrain) {
+      resolveDrain()
+      resolveDrain = null
+    }
+  }
+
+  const sink: Sink = (record: LogRecord) => {
+    const method = levelToConsoleMethod[record.level]
+    const text = formatter(record)
+    buffer.push({ method, text })
+    if (!drainScheduled) {
+      drainScheduled = true
+      drainPromise = new Promise((resolve) => {
+        resolveDrain = resolve
+      })
+      setTimeout(drain, 0)
+    }
+  }
+
+  const disposableSink = sink as DisposableSink
+
+  disposableSink.flush = () => {
+    if (buffer.length > 0) {
+      drain()
+    }
+    return drainPromise
+  }
+
+  disposableSink[Symbol.asyncDispose] = () => disposableSink.flush()
+
+  return disposableSink
+}
+
+/**
  * Wraps a sink with a filter, creating a new sink that only forwards
  * records that pass the filter predicate.
  */

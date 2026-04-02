@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, mock } from 'node:test'
 import assert from 'node:assert'
-import { getConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
+import { getConsoleSink, getNonBlockingConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
 import type { Sink } from './sink.ts'
 import type { LogRecord } from './record.ts'
 import type { LogLevel } from './level.ts'
@@ -193,6 +193,136 @@ describe('withFilter', () => {
 
     filtered(makeRecord('fatal'))
     assert.strictEqual(calls.length, 0)
+  })
+})
+
+describe('getNonBlockingConsoleSink', () => {
+  let originalConsole: {
+    debug: typeof console.debug
+    info: typeof console.info
+    warn: typeof console.warn
+    error: typeof console.error
+  }
+
+  beforeEach(() => {
+    originalConsole = {
+      debug: console.debug,
+      info: console.info,
+      warn: console.warn,
+      error: console.error,
+    }
+  })
+
+  it('does not call console synchronously', async () => {
+    const fn = mock.fn()
+    console.info = fn
+    try {
+      const sink = getNonBlockingConsoleSink()
+      sink(makeRecord('info'))
+      // Should NOT have been called yet — buffered for async drain
+      assert.strictEqual(fn.mock.calls.length, 0)
+      // Clean up: flush so the drain doesn't leak into other tests
+      await sink.flush()
+    } finally {
+      console.info = originalConsole.info
+    }
+  })
+
+  it('drains buffered records asynchronously', async () => {
+    const fn = mock.fn()
+    console.info = fn
+    try {
+      const sink = getNonBlockingConsoleSink()
+      sink(makeRecord('info'))
+      sink(makeRecord('info'))
+
+      // Wait for the setTimeout(0) drain
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      assert.strictEqual(fn.mock.calls.length, 2)
+    } finally {
+      console.info = originalConsole.info
+    }
+  })
+
+  it('flush drains immediately without waiting for timeout', async () => {
+    const fn = mock.fn()
+    console.info = fn
+    try {
+      const sink = getNonBlockingConsoleSink()
+      sink(makeRecord('info'))
+      sink(makeRecord('info'))
+
+      await sink.flush()
+      assert.strictEqual(fn.mock.calls.length, 2)
+    } finally {
+      console.info = originalConsole.info
+    }
+  })
+
+  it('maps levels to correct console methods', async () => {
+    const infoFn = mock.fn()
+    const errorFn = mock.fn()
+    const warnFn = mock.fn()
+    const debugFn = mock.fn()
+    console.info = infoFn
+    console.error = errorFn
+    console.warn = warnFn
+    console.debug = debugFn
+    try {
+      const sink = getNonBlockingConsoleSink()
+      sink(makeRecord('info'))
+      sink(makeRecord('error'))
+      sink(makeRecord('warning'))
+      sink(makeRecord('debug'))
+
+      await sink.flush()
+      assert.strictEqual(infoFn.mock.calls.length, 1)
+      assert.strictEqual(errorFn.mock.calls.length, 1)
+      assert.strictEqual(warnFn.mock.calls.length, 1)
+      assert.strictEqual(debugFn.mock.calls.length, 1)
+    } finally {
+      console.info = originalConsole.info
+      console.error = originalConsole.error
+      console.warn = originalConsole.warn
+      console.debug = originalConsole.debug
+    }
+  })
+
+  it('uses a custom formatter when provided', async () => {
+    const fn = mock.fn()
+    console.info = fn
+    try {
+      const sink = getNonBlockingConsoleSink({
+        formatter: (record) => `CUSTOM: ${record.rawMessage}`,
+      })
+      sink(makeRecord('info', { rawMessage: 'hello' }))
+
+      await sink.flush()
+      assert.strictEqual(fn.mock.calls[0].arguments[0], 'CUSTOM: hello')
+    } finally {
+      console.info = originalConsole.info
+    }
+  })
+
+  it('supports Symbol.asyncDispose', async () => {
+    const fn = mock.fn()
+    console.info = fn
+    try {
+      const sink = getNonBlockingConsoleSink()
+      sink(makeRecord('info'))
+
+      await sink[Symbol.asyncDispose]()
+      assert.strictEqual(fn.mock.calls.length, 1)
+    } finally {
+      console.info = originalConsole.info
+    }
+  })
+
+  it('is assignable to Sink type', () => {
+    const sink = getNonBlockingConsoleSink()
+    const regularSink: Sink = sink
+    assert.strictEqual(typeof regularSink, 'function')
   })
 })
 
