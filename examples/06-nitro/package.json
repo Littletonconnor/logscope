@@ -1,0 +1,17 @@
+{
+  "name": "example-nitro",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx nitropack dev",
+    "build": "npx nitropack build",
+    "preview": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "logscope": "workspace:*",
+    "@logscope/nitro": "workspace:*",
+    "h3": "^1.15.3",
+    "nitropack": "^2.11.12"
+  }
+}

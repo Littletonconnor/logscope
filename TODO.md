@@ -782,20 +782,20 @@ A minimal Next.js app demonstrating both route handlers and server actions.
 
 A standalone Nitro server (no full Nuxt) with the logscope plugin.
 
-- [ ] `package.json` with `nitropack`, `h3`, `logscope`, `@logscope/nitro`
-- [ ] `README.md` with curl commands
-- [ ] `nitro.config.ts` — minimal Nitro config
-- [ ] `server/plugins/logscope.ts` — plugin setup:
-  - [ ] `logscope()` plugin with logger + console sink
-  - [ ] Custom request/response context extractors
-- [ ] `server/routes/index.get.ts` — simple route
-- [ ] `server/routes/users/[id].get.ts` — parameterized route:
-  - [ ] Access `event.context.logscope` for scope and requestLogger
-  - [ ] `scope.set()` with user data
-- [ ] `server/routes/users.post.ts` — POST route with body parsing
-- [ ] `server/routes/error.get.ts` — error route showing auto-capture
-- [ ] Console sink with pretty formatter
-- [ ] Runs via: `pnpm dev` → starts on port **3004**
+- [x] `package.json` with `nitropack`, `h3`, `logscope`, `@logscope/nitro`
+- [x] `README.md` with curl commands
+- [x] `nitro.config.ts` — minimal Nitro config
+- [x] `server/plugins/logscope.ts` — plugin setup:
+  - [x] `logscope()` plugin with logger + console sink
+  - [x] Custom request/response context extractors
+- [x] `server/routes/index.get.ts` — simple route
+- [x] `server/routes/users/[id].get.ts` — parameterized route:
+  - [x] Access `event.context.logscope` for scope and requestLogger
+  - [x] `scope.set()` with user data
+- [x] `server/routes/users.post.ts` — POST route with body parsing
+- [x] `server/routes/error.get.ts` — error route showing auto-capture
+- [x] Console sink with pretty formatter
+- [x] Runs via: `pnpm dev` → starts on port **3000** (Nitro default)
 
 ---
 
