@@ -1,0 +1,58 @@
+{
+  "name": "@logscope/next",
+  "version": "0.0.1",
+  "description": "Next.js integration for logscope — automatic request-scoped wide event logging with AsyncLocalStorage.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Littletonconnor/logscope.git",
+    "directory": "packages/next"
+  },
+  "keywords": [
+    "logscope",
+    "nextjs",
+    "next",
+    "middleware",
+    "logging",
+    "structured-logging",
+    "wide-events",
+    "request-logging",
+    "async-local-storage"
+  ],
+  "author": "Connor Littleton",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --build",
+    "clean": "rm -rf dist",
+    "test": "node --experimental-strip-types --experimental-transform-types --test 'src/**/*.test.ts'",
+    "test:watch": "node --watch --experimental-strip-types --experimental-transform-types --test 'src/**/*.test.ts'",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "peerDependencies": {
+    "next": ">=14.0.0",
+    "logscope": "workspace:*"
+  },
+  "devDependencies": {
+    "logscope": "workspace:*",
+    "next": "^15.3.1",
+    "tsdown": "^0.20.3"
+  }
+}
