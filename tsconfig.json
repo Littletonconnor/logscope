@@ -19,7 +19,8 @@
   "references": [
     {"path": "packages/logscope"},
     {"path": "packages/hono"},
-    {"path": "packages/express"}
+    {"path": "packages/express"},
+    {"path": "packages/nitro"}
   ],
   "include": []
 }
