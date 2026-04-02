@@ -44,6 +44,10 @@ export type { Config, LoggerConfig } from './config.ts'
 // Scope
 export type { Scope } from './scope.ts'
 
+// Pipeline
+export { createPipeline } from './pipeline.ts'
+export type { PipelineOptions, BackoffStrategy } from './pipeline.ts'
+
 // Context
 export { withContext } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'
