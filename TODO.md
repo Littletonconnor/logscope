@@ -659,23 +659,23 @@ examples/
 
 The simplest possible example. A single Node.js script, no framework.
 
-- [ ] `package.json` with `logscope` dependency (`workspace:*`), `"type": "module"`
-- [ ] `README.md` explaining what the example covers
-- [ ] `src/index.ts` — single script demonstrating:
-  - [ ] `configure()` with a console sink using `getAnsiColorFormatter()`
-  - [ ] `createLogger('my-app')` — basic `info`, `warn`, `error` calls
-  - [ ] String messages with properties: `log.info('user signed in', { userId: '123' })`
-  - [ ] Properties-only logs: `log.info({ action: 'page_view', path: '/home' })`
-  - [ ] Child loggers: `log.child('db')` with its own logs
-  - [ ] `.with()` context: `log.with({ requestId: 'req_abc' })` — show properties carried through
-  - [ ] Scoped wide events: `log.scope()` → `.set()` → `.set()` → `.emit()`
-  - [ ] `scope.error()` and `scope.warn()` to show level escalation
-  - [ ] Hierarchical sink dispatch — parent logger receives child logs
-  - [ ] `parentSinks: 'override'` to stop bubbling for one branch
-  - [ ] JSON formatter via `getJsonFormatter()` as a second sink
-  - [ ] Cleanup with `await dispose()`
-- [ ] Runs via: `pnpm dev` → `node --experimental-strip-types src/index.ts`
-- [ ] Port: N/A (script, not a server)
+- [x] `package.json` with `logscope` dependency (`workspace:*`), `"type": "module"`
+- [x] `README.md` explaining what the example covers
+- [x] `src/index.ts` — single script demonstrating:
+  - [x] `configure()` with a console sink using `getAnsiColorFormatter()`
+  - [x] `createLogger('my-app')` — basic `info`, `warn`, `error` calls
+  - [x] String messages with properties: `log.info('user signed in', { userId: '123' })`
+  - [x] Properties-only logs: `log.info({ action: 'page_view', path: '/home' })`
+  - [x] Child loggers: `log.child('db')` with its own logs
+  - [x] `.with()` context: `log.with({ requestId: 'req_abc' })` — show properties carried through
+  - [x] Scoped wide events: `log.scope()` → `.set()` → `.set()` → `.emit()`
+  - [x] `scope.error()` and `scope.warn()` to show level escalation
+  - [x] Hierarchical sink dispatch — parent logger receives child logs
+  - [x] `parentSinks: 'override'` to stop bubbling for one branch
+  - [x] JSON formatter via `getJsonFormatter()` as a second sink
+  - [x] Cleanup with `await dispose()`
+- [x] Runs via: `pnpm dev` → `node --experimental-strip-types src/index.ts`
+- [x] Port: N/A (script, not a server)
 
 ---
 
@@ -914,8 +914,8 @@ A Hono server that sends error logs to a mock Sentry endpoint.
 
 These apply to all examples:
 
-- [ ] Add `examples/*` to `pnpm-workspace.yaml` so workspace linking works
-- [ ] Root `package.json` script: `"example:01": "pnpm --filter example-core-basics dev"`, etc.
+- [x] Add `examples/*` to `pnpm-workspace.yaml` so workspace linking works
+- [x] Root `package.json` script: `"example:01": "pnpm --filter example-core-basics dev"`, etc.
 - [ ] Each example's `package.json` uses `"logscope": "workspace:*"` (and `"@logscope/*": "workspace:*"` as needed)
 - [ ] Each example has a `tsconfig.json` extending root or standalone
 - [ ] Verify every example builds and runs after `pnpm install && pnpm build` from root
