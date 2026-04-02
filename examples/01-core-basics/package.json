@@ -1,0 +1,12 @@
+{
+  "name": "example-core-basics",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types src/index.ts"
+  },
+  "dependencies": {
+    "logscope": "workspace:*"
+  }
+}

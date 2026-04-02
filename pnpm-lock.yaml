@@ -30,6 +30,12 @@ importers:
         specifier: ^8.56.0
         version: 8.56.0(eslint@10.0.1)(typescript@5.9.3)
 
+  examples/01-core-basics:
+    dependencies:
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+
   packages/axiom:
     devDependencies:
       logscope:
