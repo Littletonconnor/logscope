@@ -87,6 +87,15 @@ importers:
         specifier: ^0.20.3
         version: 0.20.3(typescript@5.9.3)
 
+  packages/otlp:
+    devDependencies:
+      logscope:
+        specifier: workspace:*
+        version: link:../logscope
+      tsdown:
+        specifier: ^0.20.3
+        version: 0.20.3(typescript@5.9.3)
+
 packages:
 
   '@babel/generator@8.0.0-rc.1':
@@ -700,9 +709,6 @@ packages:
 
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
-
-  defu@6.1.4:
-    resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
 
   defu@6.1.6:
     resolution: {integrity: sha512-f8mefEW4WIVg4LckePx3mALjQSPQgFlg9U8yaPdlsbdYcHQyj9n2zL2LJEA52smeYxOvmd/nB7TpMtHGMTHcug==}
@@ -1890,8 +1896,6 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  defu@6.1.4: {}
-
   defu@6.1.6: {}
 
   depd@2.0.0: {}
@@ -2496,7 +2500,7 @@ snapshots:
     dependencies:
       ansis: 4.2.0
       cac: 6.7.14
-      defu: 6.1.4
+      defu: 6.1.6
       empathic: 2.0.0
       hookable: 6.0.1
       import-without-cache: 0.2.5

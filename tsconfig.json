@@ -20,7 +20,8 @@
     {"path": "packages/logscope"},
     {"path": "packages/hono"},
     {"path": "packages/express"},
-    {"path": "packages/nitro"}
+    {"path": "packages/nitro"},
+    {"path": "packages/otlp"}
   ],
   "include": []
 }
