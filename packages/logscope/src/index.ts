@@ -48,6 +48,10 @@ export type { Scope } from './scope.ts'
 export { createPipeline } from './pipeline.ts'
 export type { PipelineOptions, BackoffStrategy } from './pipeline.ts'
 
+// Sampling
+export { createSamplingFilter } from './sampling.ts'
+export type { SamplingFilterOptions, TailCondition } from './sampling.ts'
+
 // Context
 export { withContext } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'

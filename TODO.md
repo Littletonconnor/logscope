@@ -628,39 +628,27 @@ Wire everything into a clean, tree-shakeable public API.
 
 These are out of scope for v0.1.0 but the architecture supports them. The internal design should not need to change to add these.
 
-### Stream & Async Sinks
+### Stream & Async Sinks ✅
 
-- [ ] `getStreamSink(stream)` — WritableStream-based sink with TextEncoder
-- [ ] `fromAsyncSink(fn)` — wraps async functions as sync sinks (chains promises internally)
-- [ ] Proper `Symbol.asyncDispose` support for cleanup
-- [ ] Non-blocking console sink with write buffering
+- [x] `getStreamSink(stream)` — WritableStream-based sink with TextEncoder
+- [x] `fromAsyncSink(fn)` — wraps async functions as sync sinks (chains promises internally)
+- [x] Proper `Symbol.asyncDispose` support for cleanup
+- [x] Non-blocking console sink with write buffering
 
-### Pipeline Utilities (from evlog)
+### Pipeline Utilities (from evlog) ✅
 
-- [ ] `createPipeline(options)` — batching, retry, buffer overflow management
-- [ ] Options: `batch.size`, `batch.intervalMs`, `maxBufferSize`, `maxAttempts`
-- [ ] Backoff strategies: `exponential` (default), `linear`, `fixed`
-- [ ] `onDropped(batch, error)` callback for monitoring
-- [ ] `flush()` for graceful shutdown
-- [ ] Composable with any sink
+- [x] `createPipeline(options)` — batching, retry, buffer overflow management
+- [x] Options: `batch.size`, `batch.intervalMs`, `maxBufferSize`, `maxAttempts`
+- [x] Backoff strategies: `exponential` (default), `linear`, `fixed`
+- [x] `onDropped(batch, error)` callback for monitoring
+- [x] `flush()` for graceful shutdown
+- [x] Composable with any sink
 
-### Sampling (from evlog)
+### Sampling (from evlog) ✅
 
-- [ ] Head sampling: probabilistic per-level percentage (0-100%)
-- [ ] Tail sampling: force-keep conditions (status >= N, duration >= N ms, path matches pattern)
-- [ ] Tail sampling checked first — if force-kept, skip head sampling entirely
-
-### Tagged Template Literals
-
-- [ ] `` log.info`Hello ${name}, you have ${count} items` ``
-- [ ] Preserves structured values in message array
-- [ ] `rawMessage` becomes `TemplateStringsArray`
-
-### Lazy Evaluation
-
-- [ ] `lazy(() => value)` in `.with()` — deferred evaluation per log call
-- [ ] `() => ({ props })` as properties arg — only evaluated if level is enabled
-- [ ] `log.info(l => l`msg ${expensive()}`)` — callback form
+- [x] Head sampling: probabilistic per-level percentage (0-100%)
+- [x] Tail sampling: force-keep conditions (status >= N, duration >= N ms, path matches pattern)
+- [x] Tail sampling checked first — if force-kept, skip head sampling entirely
 
 ### Pretty Dev Output (from evlog)
 
