@@ -66,7 +66,7 @@ export type {
 } from './fingersCrossed.ts'
 
 // Context
-export { withContext } from './context.ts'
+export { withContext, withCategoryPrefix } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'
 
 // Browser

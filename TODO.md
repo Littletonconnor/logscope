@@ -684,8 +684,8 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 
 ### Category Prefix (from logtape)
 
-- [ ] `withCategoryPrefix(prefix, callback)` — prepend category segments within a scope
-- [ ] Useful for SDKs that want to namespace their internal logging
+- [x] `withCategoryPrefix(prefix, callback)` — prepend category segments within a scope
+- [x] Useful for SDKs that want to namespace their internal logging
 
 ---
 

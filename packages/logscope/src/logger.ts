@@ -5,7 +5,7 @@ import type { Sink } from './sink.ts'
 import type { Scope } from './scope.ts'
 import { compareLogLevel } from './level.ts'
 import { createScope } from './scope.ts'
-import { getImplicitContext } from './context.ts'
+import { getImplicitContext, getCategoryPrefix } from './context.ts'
 
 // ---------------------------------------------------------------------------
 // Globals – singleton root via Symbol.for (AD-1)
@@ -549,7 +549,9 @@ class DefaultLogger implements Logger {
  * Multiple calls with the same category share the same internal tree node.
  */
 export function createLogger(category: string | readonly string[]): Logger {
-  const parts = typeof category === 'string' ? [category] : category
-  const impl = LoggerImpl.getLogger(parts)
+  const parts = typeof category === 'string' ? [category] : [...category]
+  const prefix = getCategoryPrefix()
+  const fullCategory = prefix ? [...prefix, ...parts] : parts
+  const impl = LoggerImpl.getLogger(fullCategory)
   return new DefaultLogger(impl)
 }
