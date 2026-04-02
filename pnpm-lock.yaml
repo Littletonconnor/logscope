@@ -36,6 +36,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/logscope
 
+  examples/02-core-advanced:
+    dependencies:
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+
   packages/axiom:
     devDependencies:
       logscope:

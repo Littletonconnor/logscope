@@ -683,21 +683,21 @@ The simplest possible example. A single Node.js script, no framework.
 
 Advanced core features in a single Node.js script.
 
-- [ ] `package.json` with `logscope` dependency (`workspace:*`)
-- [ ] `README.md`
-- [ ] `src/index.ts` demonstrating:
-  - [ ] **Sampling filter** — `createSamplingFilter()` with head sampling (e.g., 50% of debug logs) and tail sampling (force-keep errors)
-  - [ ] **fingersCrossed sink** — buffer info/debug logs, flush all when an error occurs
-  - [ ] **categoryIsolation** — show that fingersCrossed buffers per-category, so one category's error doesn't flush another's buffer
-  - [ ] **propertyIsolation** — isolate by `requestId` property so each request has its own buffer
-  - [ ] **createPipeline** — batch logs and flush on interval, show `onDropped` callback
-  - [ ] **Implicit context** — `withContext({ requestId: 'req_1' }, () => { ... })` with `AsyncLocalStorage`
-  - [ ] **withCategoryPrefix** — `withCategoryPrefix('sdk', () => { ... })` namespacing
-  - [ ] **Context priority demo** — show message props > explicit `.with()` > implicit `withContext`
-  - [ ] **Pretty formatter** — `getPrettyFormatter()` with tree-formatted wide event output
-  - [ ] **Auto formatter** — `getAutoFormatter()` showing dev/prod detection
-- [ ] Runs via: `pnpm dev`
-- [ ] Port: N/A (script)
+- [x] `package.json` with `logscope` dependency (`workspace:*`)
+- [x] `README.md`
+- [x] `src/index.ts` demonstrating:
+  - [x] **Sampling filter** — `createSamplingFilter()` with head sampling (e.g., 50% of debug logs) and tail sampling (force-keep errors)
+  - [x] **fingersCrossed sink** — buffer info/debug logs, flush all when an error occurs
+  - [x] **categoryIsolation** — show that fingersCrossed buffers per-category, so one category's error doesn't flush another's buffer
+  - [x] **propertyIsolation** — isolate by `requestId` property so each request has its own buffer
+  - [x] **createPipeline** — batch logs and flush on interval, show `onDropped` callback
+  - [x] **Implicit context** — `withContext({ requestId: 'req_1' }, () => { ... })` with `AsyncLocalStorage`
+  - [x] **withCategoryPrefix** — `withCategoryPrefix('sdk', () => { ... })` namespacing
+  - [x] **Context priority demo** — show message props > explicit `.with()` > implicit `withContext`
+  - [x] **Pretty formatter** — `getPrettyFormatter()` with tree-formatted wide event output
+  - [x] **Auto formatter** — `getAutoFormatter()` showing dev/prod detection
+- [x] Runs via: `pnpm dev`
+- [x] Port: N/A (script)
 
 ---
 
