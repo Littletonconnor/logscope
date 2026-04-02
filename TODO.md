@@ -658,7 +658,7 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 
 ### Advanced Sink Patterns
 
-- [ ] `fingersCrossed(sink, options)` — buffer until trigger level, then flush all
+- [x] `fingersCrossed(sink, options)` — buffer until trigger level, then flush all
 - [ ] Category isolation for fingersCrossed (descendant/ancestor/both)
 - [ ] Context-based isolation with LRU eviction
 

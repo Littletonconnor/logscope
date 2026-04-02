@@ -56,6 +56,10 @@ export type { PipelineOptions, BackoffStrategy } from './pipeline.ts'
 export { createSamplingFilter } from './sampling.ts'
 export type { SamplingFilterOptions, TailCondition } from './sampling.ts'
 
+// Fingers Crossed
+export { fingersCrossed } from './fingersCrossed.ts'
+export type { FingersCrossedOptions, AfterTriggerBehavior } from './fingersCrossed.ts'
+
 // Context
 export { withContext } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'
