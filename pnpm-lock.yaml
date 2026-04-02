@@ -30,6 +30,15 @@ importers:
         specifier: ^8.56.0
         version: 8.56.0(eslint@10.0.1)(typescript@5.9.3)
 
+  packages/axiom:
+    devDependencies:
+      logscope:
+        specifier: workspace:*
+        version: link:../logscope
+      tsdown:
+        specifier: ^0.20.3
+        version: 0.20.3(typescript@5.9.3)
+
   packages/express:
     devDependencies:
       '@types/express':
