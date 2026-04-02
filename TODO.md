@@ -671,7 +671,7 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 
 ### Sink Adapters (separate packages)
 
-- [ ] `@logscope/axiom` — Axiom drain (use `defineDrain` pattern from evlog)
+- [x] `@logscope/axiom` — Axiom drain (use `defineDrain` pattern from evlog)
 - [x] `@logscope/otlp` — OpenTelemetry drain
 - [ ] `@logscope/sentry` — Sentry integration
 
