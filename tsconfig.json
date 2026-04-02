@@ -21,7 +21,8 @@
     {"path": "packages/hono"},
     {"path": "packages/express"},
     {"path": "packages/nitro"},
-    {"path": "packages/otlp"}
+    {"path": "packages/otlp"},
+    {"path": "packages/sentry"}
   ],
   "include": []
 }

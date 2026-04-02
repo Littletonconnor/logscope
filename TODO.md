@@ -673,7 +673,7 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 
 - [x] `@logscope/axiom` — Axiom drain (use `defineDrain` pattern from evlog)
 - [x] `@logscope/otlp` — OpenTelemetry drain
-- [ ] `@logscope/sentry` — Sentry integration
+- [x] `@logscope/sentry` — Sentry integration
 
 ### Browser-Specific Features ✅
 

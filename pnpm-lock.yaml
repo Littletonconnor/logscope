@@ -105,6 +105,15 @@ importers:
         specifier: ^0.20.3
         version: 0.20.3(typescript@5.9.3)
 
+  packages/sentry:
+    devDependencies:
+      logscope:
+        specifier: workspace:*
+        version: link:../logscope
+      tsdown:
+        specifier: ^0.20.3
+        version: 0.20.3(typescript@5.9.3)
+
 packages:
 
   '@babel/generator@8.0.0-rc.1':
