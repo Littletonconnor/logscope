@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "size": "./scripts/check-size.sh"
+    "size": "./scripts/check-size.sh",
+    "example:01": "pnpm --filter example-core-basics dev"
   },
   "repository": {
     "type": "git",
