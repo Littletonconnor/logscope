@@ -650,11 +650,11 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 - [x] Tail sampling: force-keep conditions (status >= N, duration >= N ms, path matches pattern)
 - [x] Tail sampling checked first — if force-kept, skip head sampling entirely
 
-### Pretty Dev Output (from evlog)
+### Pretty Dev Output (from evlog) ✅
 
-- [ ] Tree-formatted wide event output with `|--` and `+--` prefixes
-- [ ] Colored levels, dim timestamps, bold categories
-- [ ] Auto dev/prod detection (pretty in dev, JSON in prod)
+- [x] Tree-formatted wide event output with `├──` and `└──` box-drawing prefixes
+- [x] Colored levels, dim timestamps, bold categories
+- [x] Auto dev/prod detection (pretty in dev, JSON in prod)
 
 ### Advanced Sink Patterns
 

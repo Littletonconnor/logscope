@@ -162,6 +162,7 @@ const GREEN = '\x1b[32m'
 const YELLOW = '\x1b[33m'
 const CYAN = '\x1b[36m'
 const GRAY = '\x1b[90m'
+const WHITE = '\x1b[37m'
 
 const LEVEL_COLORS: Record<string, string> = {
   trace: GRAY,
@@ -220,4 +221,227 @@ export function getAnsiColorFormatter(
 
     return line
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pretty Dev Formatter — tree-formatted wide event output
+// ---------------------------------------------------------------------------
+
+/**
+ * Options for the pretty dev formatter.
+ */
+export interface PrettyFormatterOptions {
+  /**
+   * Separator between category segments.
+   * @default " · "
+   */
+  categorySeparator?: string
+  /**
+   * Maximum depth for rendering nested objects in the tree.
+   * @default 4
+   */
+  maxDepth?: number
+}
+
+/**
+ * Renders an object value as a tree with box-drawing prefixes.
+ * Each line is indented with the given prefix. Last items use `└── `,
+ * others use `├── `, and continuation lines use `│   ` or `    `.
+ */
+function renderTree(
+  obj: Record<string, unknown>,
+  prefix: string,
+  depth: number,
+  maxDepth: number,
+): string[] {
+  const keys = Object.keys(obj)
+  const lines: string[] = []
+
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
+    const value = obj[key]
+    const isLast = i === keys.length - 1
+    const connector = isLast ? '└── ' : '├── '
+    const childPrefix = prefix + (isLast ? '    ' : '│   ')
+
+    if (
+      depth < maxDepth &&
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      !(value instanceof Error) &&
+      !(value instanceof Date) &&
+      Object.keys(value as Record<string, unknown>).length > 0
+    ) {
+      lines.push(`${prefix}${connector}${DIM}${key}:${RESET}`)
+      lines.push(
+        ...renderTree(
+          value as Record<string, unknown>,
+          childPrefix,
+          depth + 1,
+          maxDepth,
+        ),
+      )
+    } else {
+      const rendered = renderPrettyValue(value)
+      lines.push(`${prefix}${connector}${DIM}${key}:${RESET} ${rendered}`)
+    }
+  }
+
+  return lines
+}
+
+/**
+ * Renders a value for pretty output — keeps primitives readable,
+ * uses inspect() for complex leaf values.
+ */
+function renderPrettyValue(value: unknown): string {
+  if (value === null) return `${DIM}null${RESET}`
+  if (value === undefined) return `${DIM}undefined${RESET}`
+  if (typeof value === 'string') return `${WHITE}${value}${RESET}`
+  if (typeof value === 'number') return `${CYAN}${value}${RESET}`
+  if (typeof value === 'boolean') return `${YELLOW}${value}${RESET}`
+  if (value instanceof Error) {
+    const parts = [`${RED}${value.name}: ${value.message}${RESET}`]
+    if (value.stack) {
+      const stackLines = value.stack.split('\n').slice(1, 4)
+      for (const line of stackLines) {
+        parts.push(`${DIM}${line.trim()}${RESET}`)
+      }
+    }
+    return parts.join('\n')
+  }
+  if (Array.isArray(value)) return inspect(value)
+  return inspect(value)
+}
+
+/**
+ * Creates a pretty formatter for dev-friendly terminal output.
+ *
+ * Renders wide events (scope emits with many properties) as a visual tree
+ * with box-drawing characters (`├──`, `└──`). Regular log messages get
+ * colored output similar to {@link getAnsiColorFormatter} but with the
+ * properties rendered as an indented tree below the header line.
+ *
+ * Best used in development. For production, prefer {@link getJsonFormatter}.
+ *
+ * @example
+ * ```ts
+ * configure({
+ *   sinks: { console: getConsoleSink({ formatter: getPrettyFormatter() }) },
+ *   loggers: [{ category: 'app', sinks: ['console'], level: 'debug' }],
+ * })
+ * ```
+ */
+export function getPrettyFormatter(
+  options?: PrettyFormatterOptions,
+): TextFormatter {
+  const separator = options?.categorySeparator ?? ' · '
+  const maxDepth = options?.maxDepth ?? 4
+
+  return (record: LogRecord): string => {
+    const levelColor = LEVEL_COLORS[record.level] ?? ''
+    const levelTag = `${levelColor}${record.level.toUpperCase()}${RESET}`
+    const timestamp = `${DIM}${new Date(record.timestamp).toISOString()}${RESET}`
+    const category =
+      record.category.length > 0
+        ? ` ${BOLD}${record.category.join(separator)}${RESET}`
+        : ''
+
+    const message = renderMessage(record)
+    const messagePart = message ? ` ${message}` : ''
+
+    const header = `${levelTag}${category}${messagePart} ${timestamp}`
+
+    const propKeys = Object.keys(record.properties)
+    if (propKeys.length === 0) {
+      return header
+    }
+
+    // For small property sets (≤ 3 keys, all primitives), use inline format
+    if (propKeys.length <= 3 && propKeys.every((k) => isPrimitive(record.properties[k]))) {
+      const inline = propKeys
+        .map((k) => `${DIM}${k}=${RESET}${renderPrettyValue(record.properties[k])}`)
+        .join(' ')
+      return `${header} ${inline}`
+    }
+
+    // For larger/nested properties, render as a tree
+    const treeLines = renderTree(record.properties, '', 0, maxDepth)
+    return [header, ...treeLines].join('\n')
+  }
+}
+
+function isPrimitive(value: unknown): boolean {
+  return value === null || value === undefined || typeof value !== 'object'
+}
+
+// ---------------------------------------------------------------------------
+// Auto Formatter — dev/prod detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Options for the auto formatter.
+ */
+export interface AutoFormatterOptions {
+  /**
+   * Override the environment detection. When not provided, the formatter
+   * checks `NODE_ENV` for `"production"`.
+   */
+  production?: boolean
+  /**
+   * Options forwarded to {@link getPrettyFormatter} in dev mode.
+   */
+  pretty?: PrettyFormatterOptions
+  /**
+   * Options forwarded to {@link getJsonFormatter} in prod mode.
+   */
+  json?: JsonFormatterOptions
+}
+
+/**
+ * Creates a formatter that automatically selects pretty output in development
+ * and JSON output in production.
+ *
+ * Detection logic:
+ * - If `options.production` is explicitly set, uses that.
+ * - Otherwise checks `process.env.NODE_ENV === "production"` (Node/Bun)
+ *   or `Deno.env.get("DENO_ENV") === "production"` (Deno).
+ * - Defaults to dev (pretty) when detection fails.
+ *
+ * @example
+ * ```ts
+ * configure({
+ *   sinks: { console: getConsoleSink({ formatter: getAutoFormatter() }) },
+ *   loggers: [{ category: 'app', sinks: ['console'], level: 'debug' }],
+ * })
+ * ```
+ */
+export function getAutoFormatter(options?: AutoFormatterOptions): TextFormatter {
+  const isProd = options?.production ?? detectProduction()
+  return isProd
+    ? getJsonFormatter(options?.json)
+    : getPrettyFormatter(options?.pretty)
+}
+
+function detectProduction(): boolean {
+  try {
+    // Node.js / Bun
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.NODE_ENV === 'production'
+    }
+  } catch {
+    // process may throw in restricted environments
+  }
+  try {
+    // Deno
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = (globalThis as any).Deno
+    if (d?.env?.get) {
+      return d.env.get('DENO_ENV') === 'production'
+    }
+  } catch {
+    // Deno.env.get may throw without --allow-env
+  }
+  return false
 }
