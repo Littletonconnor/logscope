@@ -57,6 +57,22 @@ importers:
         specifier: workspace:*
         version: link:../../packages/logscope
 
+  examples/04-express:
+    dependencies:
+      '@logscope/express':
+        specifier: workspace:*
+        version: link:../../packages/express
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.2
+        version: 5.0.6
+
   packages/axiom:
     devDependencies:
       logscope:
