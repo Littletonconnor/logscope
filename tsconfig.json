@@ -17,7 +17,8 @@
     "composite": true
   },
   "references": [
-    {"path": "packages/logscope"}
+    {"path": "packages/logscope"},
+    {"path": "packages/hono"}
   ],
   "include": []
 }
