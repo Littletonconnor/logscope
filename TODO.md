@@ -624,6 +624,305 @@ Wire everything into a clean, tree-shakeable public API.
 
 ---
 
+## Phase 12: Examples Directory
+
+Standalone, runnable examples that verify logscope works end-to-end across every adapter, exporter, and core feature. Each example is its own app with its own `package.json`. The goal is twofold: (1) give users clear, copy-paste-ready starting points for every integration, and (2) serve as living integration tests that prove the library works in real framework contexts.
+
+### Structure
+
+```
+examples/
+├── 01-core-basics/           # Pure Node.js — no framework
+├── 02-core-advanced/         # Sampling, fingersCrossed, pipelines, context
+├── 03-hono/                  # Hono server with @logscope/hono middleware
+├── 04-express/               # Express server with @logscope/express middleware
+├── 05-next/                  # Next.js app with @logscope/next (route handlers + server actions)
+├── 06-nitro/                 # Nitro server with @logscope/nitro plugin
+├── 07-browser/               # Vite SPA with createBrowserDrain + mock ingest endpoint
+├── 08-axiom/                 # Hono server → Axiom sink (mock Axiom endpoint)
+├── 09-otlp/                  # Hono server → OTLP exporter (mock OTLP collector)
+└── 10-sentry/                # Hono server → Sentry sink (mock Sentry endpoint)
+```
+
+### Principles
+
+- **Every example runs with one command** — `pnpm dev` starts it, `curl` (or browser) exercises it
+- **No external accounts required** — exporters (Axiom, OTLP, Sentry) use mock HTTP endpoints bundled in the example so output is visible locally
+- **Self-documenting** — each example has a `README.md` with what it demonstrates, how to run it, and what to look for in the output
+- **Minimal dependencies** — only install what the example actually needs
+- **Consistent port scheme** — each example runs on a predictable port (3001, 3002, …) so they don't collide
+- **All examples use `workspace:*`** for logscope packages — pnpm workspace linking, no publishing required
+
+---
+
+### `01-core-basics/` — Core Logging Fundamentals
+
+The simplest possible example. A single Node.js script, no framework.
+
+- [ ] `package.json` with `logscope` dependency (`workspace:*`), `"type": "module"`
+- [ ] `README.md` explaining what the example covers
+- [ ] `src/index.ts` — single script demonstrating:
+  - [ ] `configure()` with a console sink using `getAnsiColorFormatter()`
+  - [ ] `createLogger('my-app')` — basic `info`, `warn`, `error` calls
+  - [ ] String messages with properties: `log.info('user signed in', { userId: '123' })`
+  - [ ] Properties-only logs: `log.info({ action: 'page_view', path: '/home' })`
+  - [ ] Child loggers: `log.child('db')` with its own logs
+  - [ ] `.with()` context: `log.with({ requestId: 'req_abc' })` — show properties carried through
+  - [ ] Scoped wide events: `log.scope()` → `.set()` → `.set()` → `.emit()`
+  - [ ] `scope.error()` and `scope.warn()` to show level escalation
+  - [ ] Hierarchical sink dispatch — parent logger receives child logs
+  - [ ] `parentSinks: 'override'` to stop bubbling for one branch
+  - [ ] JSON formatter via `getJsonFormatter()` as a second sink
+  - [ ] Cleanup with `await dispose()`
+- [ ] Runs via: `pnpm dev` → `node --experimental-strip-types src/index.ts`
+- [ ] Port: N/A (script, not a server)
+
+---
+
+### `02-core-advanced/` — Sampling, Fingers Crossed, Pipelines, Context
+
+Advanced core features in a single Node.js script.
+
+- [ ] `package.json` with `logscope` dependency (`workspace:*`)
+- [ ] `README.md`
+- [ ] `src/index.ts` demonstrating:
+  - [ ] **Sampling filter** — `createSamplingFilter()` with head sampling (e.g., 50% of debug logs) and tail sampling (force-keep errors)
+  - [ ] **fingersCrossed sink** — buffer info/debug logs, flush all when an error occurs
+  - [ ] **categoryIsolation** — show that fingersCrossed buffers per-category, so one category's error doesn't flush another's buffer
+  - [ ] **propertyIsolation** — isolate by `requestId` property so each request has its own buffer
+  - [ ] **createPipeline** — batch logs and flush on interval, show `onDropped` callback
+  - [ ] **Implicit context** — `withContext({ requestId: 'req_1' }, () => { ... })` with `AsyncLocalStorage`
+  - [ ] **withCategoryPrefix** — `withCategoryPrefix('sdk', () => { ... })` namespacing
+  - [ ] **Context priority demo** — show message props > explicit `.with()` > implicit `withContext`
+  - [ ] **Pretty formatter** — `getPrettyFormatter()` with tree-formatted wide event output
+  - [ ] **Auto formatter** — `getAutoFormatter()` showing dev/prod detection
+- [ ] Runs via: `pnpm dev`
+- [ ] Port: N/A (script)
+
+---
+
+### `03-hono/` — Hono Request Logging
+
+A Hono HTTP server with automatic request-scoped wide event logging.
+
+- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono` dependencies
+- [ ] `README.md` with curl commands to exercise every route
+- [ ] `src/index.ts` — Hono app demonstrating:
+  - [ ] `logscope()` middleware applied globally
+  - [ ] `GET /` — simple route, shows baseline request/response logging
+  - [ ] `GET /users/:id` — uses `c.get('scope').set()` to add user context
+  - [ ] `POST /users` — parses body, sets it on scope, shows request body logging
+  - [ ] `GET /slow` — simulated slow endpoint (`setTimeout`), shows duration in emitted event
+  - [ ] `GET /error` — throws an error, shows `scope.error()` auto-capture and error-level emit
+  - [ ] `GET /warn` — returns 4xx, shows warning-level scope emit
+  - [ ] Custom `getRequestContext` and `getResponseContext` extractors
+  - [ ] Handler using `c.get('requestLogger')` for within-request structured logs
+  - [ ] Handler using `c.get('requestId')` to show auto-generated request IDs
+  - [ ] Console sink with `getAnsiColorFormatter()` for colorful terminal output
+  - [ ] Pretty formatter showing tree-formatted wide event output
+- [ ] Runs via: `pnpm dev` → starts on port **3001**
+- [ ] Exercise via: `curl http://localhost:3001/users/42`, etc.
+
+---
+
+### `04-express/` — Express Request Logging
+
+An Express server with the same patterns as Hono.
+
+- [ ] `package.json` with `express`, `@types/express`, `logscope`, `@logscope/express` dependencies
+- [ ] `README.md` with curl commands
+- [ ] `src/index.ts` — Express app demonstrating:
+  - [ ] `logscope()` middleware applied via `app.use()`
+  - [ ] `GET /` — baseline request logging
+  - [ ] `GET /users/:id` — `req.scope!.set()` with user context
+  - [ ] `POST /users` — JSON body parsing, scope accumulation
+  - [ ] `GET /slow` — simulated latency, duration tracking
+  - [ ] `GET /error` — error route with Express error handler middleware
+  - [ ] `req.requestLogger` usage for within-request logs
+  - [ ] `req.requestId` access
+  - [ ] Express error-handling middleware that catches and logs errors
+  - [ ] Console sink with `getAnsiColorFormatter()`
+- [ ] Runs via: `pnpm dev` → starts on port **3002**
+
+---
+
+### `05-next/` — Next.js Route Handlers & Server Actions
+
+A minimal Next.js app demonstrating both route handlers and server actions.
+
+- [ ] `package.json` with `next`, `react`, `react-dom`, `logscope`, `@logscope/next`
+- [ ] `README.md` with instructions for both route handler and server action testing
+- [ ] `src/lib/logscope.ts` — shared configuration:
+  - [ ] `configure()` with console sink + pretty formatter
+  - [ ] Shared logger instance: `createLogger('my-next-app')`
+- [ ] `src/app/api/users/[id]/route.ts` — route handler:
+  - [ ] `withLogscope()` wrapping GET handler
+  - [ ] Access `logscope.scope`, `logscope.requestLogger`, `logscope.requestId`
+  - [ ] `scope.set()` with user data from params
+  - [ ] Return JSON response
+- [ ] `src/app/api/users/route.ts` — POST route handler:
+  - [ ] `withLogscope()` wrapping POST handler
+  - [ ] Parse request body, accumulate on scope
+- [ ] `src/app/api/error/route.ts` — error route:
+  - [ ] Throws inside handler, shows error capture
+- [ ] `src/app/page.tsx` — simple page with a form:
+  - [ ] Form that calls a server action
+  - [ ] Displays result
+- [ ] `src/app/actions.ts` — server actions:
+  - [ ] `withLogscopeAction()` wrapping a form submission action
+  - [ ] Shows `logscope.scope.set()` inside action
+  - [ ] Shows `logscope.requestLogger.info()` inside action
+- [ ] `next.config.js` — minimal config
+- [ ] `tsconfig.json` — Next.js TypeScript config
+- [ ] Runs via: `pnpm dev` → starts on port **3003**
+
+---
+
+### `06-nitro/` — Nitro/Nuxt Server Logging
+
+A standalone Nitro server (no full Nuxt) with the logscope plugin.
+
+- [ ] `package.json` with `nitropack`, `h3`, `logscope`, `@logscope/nitro`
+- [ ] `README.md` with curl commands
+- [ ] `nitro.config.ts` — minimal Nitro config
+- [ ] `server/plugins/logscope.ts` — plugin setup:
+  - [ ] `logscope()` plugin with logger + console sink
+  - [ ] Custom request/response context extractors
+- [ ] `server/routes/index.get.ts` — simple route
+- [ ] `server/routes/users/[id].get.ts` — parameterized route:
+  - [ ] Access `event.context.logscope` for scope and requestLogger
+  - [ ] `scope.set()` with user data
+- [ ] `server/routes/users.post.ts` — POST route with body parsing
+- [ ] `server/routes/error.get.ts` — error route showing auto-capture
+- [ ] Console sink with pretty formatter
+- [ ] Runs via: `pnpm dev` → starts on port **3004**
+
+---
+
+### `07-browser/` — Browser Logging with Mock Ingest
+
+A Vite SPA that logs to a local mock ingest endpoint, demonstrating browser-specific features.
+
+- [ ] `package.json` with `vite`, `logscope`
+- [ ] `README.md` explaining browser drain behavior
+- [ ] `src/index.html` — simple HTML page with buttons:
+  - [ ] "Log Info" button — fires `log.info()`
+  - [ ] "Log Error" button — fires `log.error()`
+  - [ ] "Start Scope" / "Add Context" / "Emit Scope" buttons — interactive scope demo
+  - [ ] "Switch Tab" instruction — demonstrates visibility change auto-flush
+  - [ ] Visual log output panel showing what's been sent to the mock endpoint
+- [ ] `src/main.ts` — browser entry point:
+  - [ ] `configure()` with `createBrowserDrain({ endpoint: '/api/ingest' })`
+  - [ ] Also configure a console sink so logs appear in DevTools
+  - [ ] `createLogger('browser-app')`
+  - [ ] Wire up button event listeners
+- [ ] `server.ts` — tiny Node.js HTTP server (or Vite plugin) that:
+  - [ ] Serves the SPA
+  - [ ] `POST /api/ingest` — mock endpoint that pretty-prints received log batches to terminal
+  - [ ] Shows batch size, timing, and individual log records
+- [ ] Demonstrates:
+  - [ ] `createBrowserDrain` batching (logs buffer, flush on interval)
+  - [ ] `sendBeacon` fallback on page unload (instruct user to close tab, observe server output)
+  - [ ] `flushOnVisibilityChange` (instruct user to switch tabs)
+  - [ ] `keepalive: true` fetch behavior
+  - [ ] Console sink in parallel so DevTools also shows logs
+- [ ] Runs via: `pnpm dev` → Vite dev server on port **3005**
+
+---
+
+### `08-axiom/` — Axiom Exporter with Mock Endpoint
+
+A Hono server that sends logs to a mock Axiom ingest endpoint.
+
+- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/axiom`
+- [ ] `README.md` explaining Axiom integration
+- [ ] `src/app.ts` — Hono app with logscope middleware:
+  - [ ] Routes that generate various log levels
+  - [ ] `createAxiomSink()` configured to point at the mock endpoint
+  - [ ] Console sink in parallel so you can see logs in terminal too
+- [ ] `src/mock-axiom.ts` — mock Axiom ingest server:
+  - [ ] `POST /v1/datasets/:dataset/ingest` — accepts and pretty-prints Axiom-formatted events
+  - [ ] Validates auth header format
+  - [ ] Shows batch size, timestamps, mapped fields
+  - [ ] Runs on port **3106**
+- [ ] `src/index.ts` — starts both the app and mock server
+- [ ] Demonstrates:
+  - [ ] Batched export (logs buffer, flush every N seconds or N records)
+  - [ ] Axiom event format (mapped fields: `_time`, `level`, `logger`, etc.)
+  - [ ] Retry on failure (kill mock server, send requests, restart mock — see retry behavior)
+  - [ ] `onDropped` callback when buffer overflows
+- [ ] Runs via: `pnpm dev` → app on port **3006**, mock Axiom on port **3106**
+
+---
+
+### `09-otlp/` — OpenTelemetry Exporter with Mock Collector
+
+A Hono server that exports logs via OTLP HTTP/JSON to a mock collector.
+
+- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/otlp`
+- [ ] `README.md` explaining OTLP integration
+- [ ] `src/app.ts` — Hono app:
+  - [ ] `createOtlpExporter()` with resource attributes (`service.name`, `service.version`, `deployment.environment`)
+  - [ ] Routes that generate logs at various levels
+  - [ ] Console sink in parallel
+- [ ] `src/mock-collector.ts` — mock OTLP collector:
+  - [ ] `POST /v1/logs` — accepts OTLP JSON payload, pretty-prints:
+    - Resource attributes
+    - Scope logs
+    - Individual log records with severity, body, attributes
+  - [ ] Runs on port **3107**
+- [ ] `src/index.ts` — starts both
+- [ ] Demonstrates:
+  - [ ] OTLP log record format (severity number, body, attributes, resource)
+  - [ ] Resource attribute propagation (`service.name` appears on every record)
+  - [ ] Batched export behavior
+  - [ ] Custom headers for authentication
+- [ ] Runs via: `pnpm dev` → app on port **3007**, mock collector on port **3107**
+
+---
+
+### `10-sentry/` — Sentry Error Tracking with Mock Endpoint
+
+A Hono server that sends error logs to a mock Sentry endpoint.
+
+- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/sentry`
+- [ ] `README.md` explaining Sentry integration
+- [ ] `src/app.ts` — Hono app:
+  - [ ] `createSentrySink()` configured with a mock DSN pointing at the local mock server
+  - [ ] Only error/fatal logs sent to Sentry (use `withFilter` or level config)
+  - [ ] Console sink for all levels in parallel
+  - [ ] Routes: normal request, error with stack trace, error with cause chain, warning (not sent to Sentry)
+- [ ] `src/mock-sentry.ts` — mock Sentry envelope endpoint:
+  - [ ] `POST /api/:projectId/envelope/` — parses Sentry envelope format:
+    - Event header (event_id, dsn, timestamp)
+    - Item header (type, length)
+    - Event payload (exception values, stack frames, tags, contexts)
+  - [ ] Pretty-prints parsed exception info, stack frames, tags
+  - [ ] Runs on port **3108**
+- [ ] `src/index.ts` — starts both
+- [ ] Demonstrates:
+  - [ ] Error-only sink filtering (info/warn don't go to Sentry)
+  - [ ] Stack trace parsing and frame extraction
+  - [ ] Error cause chains (nested errors)
+  - [ ] Environment and release tags
+  - [ ] Sentry envelope wire format
+- [ ] Runs via: `pnpm dev` → app on port **3008**, mock Sentry on port **3108**
+
+---
+
+### Cross-Cutting Tasks
+
+These apply to all examples:
+
+- [ ] Add `examples/*` to `pnpm-workspace.yaml` so workspace linking works
+- [ ] Root `package.json` script: `"example:01": "pnpm --filter example-core-basics dev"`, etc.
+- [ ] Each example's `package.json` uses `"logscope": "workspace:*"` (and `"@logscope/*": "workspace:*"` as needed)
+- [ ] Each example has a `tsconfig.json` extending root or standalone
+- [ ] Verify every example builds and runs after `pnpm install && pnpm build` from root
+- [ ] Add a root-level `examples/README.md` with a table of all examples, ports, and what they demonstrate
+
+---
+
 ## Future Phases (Post-MVP)
 
 These are out of scope for v0.1.0 but the architecture supports them. The internal design should not need to change to add these.
