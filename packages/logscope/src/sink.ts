@@ -85,3 +85,41 @@ export function withFilter(sink: Sink, filter: FilterLike): Sink {
     }
   }
 }
+
+/**
+ * A sink that supports async disposal and flushing of pending writes.
+ * Assignable to `Sink` everywhere, but exposes extra methods for lifecycle management.
+ */
+export type DisposableSink = Sink & {
+  /** Waits for all pending async writes to complete. */
+  flush(): Promise<void>
+  /** Async disposal — flushes pending writes. Enables `await using`. */
+  [Symbol.asyncDispose](): Promise<void>
+}
+
+/**
+ * Wraps an async function as a synchronous {@link Sink}.
+ *
+ * Internally chains promises so that writes execute in order and each
+ * write waits for the previous one to finish. Call `flush()` or use
+ * `await using` to wait for all pending writes to complete.
+ *
+ * Errors from the async function will surface as thrown errors on the
+ * next sink invocation, which the logger's emit error handling will
+ * catch and report to the meta logger.
+ */
+export function fromAsyncSink(fn: (record: LogRecord) => Promise<void>): DisposableSink {
+  let pending: Promise<void> = Promise.resolve()
+
+  const sink: Sink = (record: LogRecord) => {
+    pending = pending.then(() => fn(record))
+  }
+
+  const disposableSink = sink as DisposableSink
+
+  disposableSink.flush = () => pending
+
+  disposableSink[Symbol.asyncDispose] = () => pending
+
+  return disposableSink
+}

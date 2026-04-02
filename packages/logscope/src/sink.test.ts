@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, mock } from 'node:test'
 import assert from 'node:assert'
-import { getConsoleSink, withFilter } from './sink.ts'
+import { getConsoleSink, withFilter, fromAsyncSink } from './sink.ts'
 import type { Sink } from './sink.ts'
 import type { LogRecord } from './record.ts'
 import type { LogLevel } from './level.ts'
@@ -193,6 +193,68 @@ describe('withFilter', () => {
 
     filtered(makeRecord('fatal'))
     assert.strictEqual(calls.length, 0)
+  })
+})
+
+describe('fromAsyncSink', () => {
+  it('calls the async function for each record', async () => {
+    const received: LogRecord[] = []
+    const sink = fromAsyncSink(async (record) => {
+      received.push(record)
+    })
+
+    sink(makeRecord('info'))
+    sink(makeRecord('error'))
+    await sink.flush()
+    assert.strictEqual(received.length, 2)
+    assert.strictEqual(received[0].level, 'info')
+    assert.strictEqual(received[1].level, 'error')
+  })
+
+  it('preserves write ordering', async () => {
+    const order: number[] = []
+    const sink = fromAsyncSink(async (record) => {
+      const delay = record.properties.delay as number
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      order.push(record.properties.seq as number)
+    })
+
+    // First record takes longer than second — ordering should still be preserved
+    sink(makeRecord('info', { properties: { seq: 1, delay: 30 } }))
+    sink(makeRecord('info', { properties: { seq: 2, delay: 5 } }))
+    await sink.flush()
+    assert.deepStrictEqual(order, [1, 2])
+  })
+
+  it('flush resolves after all pending writes complete', async () => {
+    let completed = false
+    const sink = fromAsyncSink(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      completed = true
+    })
+
+    sink(makeRecord('info'))
+    assert.strictEqual(completed, false)
+    await sink.flush()
+    assert.strictEqual(completed, true)
+  })
+
+  it('is assignable to Sink type', () => {
+    const sink = fromAsyncSink(async () => {})
+    const regularSink: Sink = sink
+    regularSink(makeRecord('info'))
+  })
+
+  it('supports Symbol.asyncDispose', async () => {
+    let flushed = false
+    const sink = fromAsyncSink(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      flushed = true
+    })
+
+    sink(makeRecord('info'))
+    await sink[Symbol.asyncDispose]()
+    assert.strictEqual(flushed, true)
   })
 })
 
