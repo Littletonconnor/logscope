@@ -68,3 +68,7 @@ export type {
 // Context
 export { withContext } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'
+
+// Browser
+export { createBrowserDrain } from './browser.ts'
+export type { BrowserDrainOptions, RecordSerializer } from './browser.ts'

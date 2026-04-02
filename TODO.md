@@ -675,12 +675,12 @@ These are out of scope for v0.1.0 but the architecture supports them. The intern
 - [ ] `@logscope/otlp` — OpenTelemetry drain
 - [ ] `@logscope/sentry` — Sentry integration
 
-### Browser-Specific Features
+### Browser-Specific Features ✅
 
-- [ ] `sendBeacon` drain for page unload reliability
-- [ ] `keepalive` fetch for page transitions
-- [ ] Visibility change auto-flush
-- [ ] `createBrowserDrain(config)` — composite browser transport
+- [x] `sendBeacon` drain for page unload reliability
+- [x] `keepalive` fetch for page transitions
+- [x] Visibility change auto-flush
+- [x] `createBrowserDrain(config)` — composite browser transport
 
 ### Category Prefix (from logtape)
 
