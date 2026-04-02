@@ -750,31 +750,31 @@ An Express server with the same patterns as Hono.
 
 A minimal Next.js app demonstrating both route handlers and server actions.
 
-- [ ] `package.json` with `next`, `react`, `react-dom`, `logscope`, `@logscope/next`
-- [ ] `README.md` with instructions for both route handler and server action testing
-- [ ] `src/lib/logscope.ts` — shared configuration:
-  - [ ] `configure()` with console sink + pretty formatter
-  - [ ] Shared logger instance: `createLogger('my-next-app')`
-- [ ] `src/app/api/users/[id]/route.ts` — route handler:
-  - [ ] `withLogscope()` wrapping GET handler
-  - [ ] Access `logscope.scope`, `logscope.requestLogger`, `logscope.requestId`
-  - [ ] `scope.set()` with user data from params
-  - [ ] Return JSON response
-- [ ] `src/app/api/users/route.ts` — POST route handler:
-  - [ ] `withLogscope()` wrapping POST handler
-  - [ ] Parse request body, accumulate on scope
-- [ ] `src/app/api/error/route.ts` — error route:
-  - [ ] Throws inside handler, shows error capture
-- [ ] `src/app/page.tsx` — simple page with a form:
-  - [ ] Form that calls a server action
-  - [ ] Displays result
-- [ ] `src/app/actions.ts` — server actions:
-  - [ ] `withLogscopeAction()` wrapping a form submission action
-  - [ ] Shows `logscope.scope.set()` inside action
-  - [ ] Shows `logscope.requestLogger.info()` inside action
-- [ ] `next.config.js` — minimal config
-- [ ] `tsconfig.json` — Next.js TypeScript config
-- [ ] Runs via: `pnpm dev` → starts on port **3003**
+- [x] `package.json` with `next`, `react`, `react-dom`, `logscope`, `@logscope/next`
+- [x] `README.md` with instructions for both route handler and server action testing
+- [x] `src/lib/logscope.ts` — shared configuration:
+  - [x] `configure()` with console sink + pretty formatter
+  - [x] Shared logger instance: `createLogger('my-next-app')`
+- [x] `src/app/api/users/[id]/route.ts` — route handler:
+  - [x] `withLogscope()` wrapping GET handler
+  - [x] Access `logscope.scope`, `logscope.requestLogger`, `logscope.requestId`
+  - [x] `scope.set()` with user data from params
+  - [x] Return JSON response
+- [x] `src/app/api/users/route.ts` — POST route handler:
+  - [x] `withLogscope()` wrapping POST handler
+  - [x] Parse request body, accumulate on scope
+- [x] `src/app/api/error/route.ts` — error route:
+  - [x] Throws inside handler, shows error capture
+- [x] `src/app/page.tsx` — simple page with a form:
+  - [x] Form that calls a server action
+  - [x] Displays result
+- [x] `src/app/actions.ts` — server actions:
+  - [x] `withLogscopeAction()` wrapping a form submission action
+  - [x] Shows `logscope.scope.set()` inside action
+  - [x] Shows `logscope.requestLogger.info()` inside action
+- [x] `next.config.js` — minimal config
+- [x] `tsconfig.json` — Next.js TypeScript config
+- [x] Runs via: `pnpm dev` → starts on port **3003**
 
 ---
 
