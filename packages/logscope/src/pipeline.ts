@@ -121,7 +121,6 @@ export function createPipeline(options: PipelineOptions): DisposableSink {
     const batch = buffer.splice(0, batchSize)
     pending = pending.then(() => sendBatch(batch))
 
-    // If there are still records, schedule another drain
     if (buffer.length >= batchSize) {
       drainBuffer()
     } else if (buffer.length > 0) {
@@ -134,7 +133,6 @@ export function createPipeline(options: PipelineOptions): DisposableSink {
 
     buffer.push(record)
 
-    // Drop oldest records if buffer is full
     if (buffer.length > maxBufferSize) {
       const dropped = buffer.splice(0, buffer.length - maxBufferSize)
       onDropped?.(dropped, new Error('Buffer overflow: maxBufferSize exceeded'))
@@ -154,7 +152,6 @@ export function createPipeline(options: PipelineOptions): DisposableSink {
     clearTimer()
     disposed = true
 
-    // Drain everything remaining in the buffer
     while (buffer.length > 0) {
       const batch = buffer.splice(0, batchSize)
       pending = pending.then(() => sendBatch(batch))

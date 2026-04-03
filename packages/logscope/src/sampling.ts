@@ -60,14 +60,12 @@ export function createSamplingFilter(options: SamplingFilterOptions = {}): Filte
   const random = options.random ?? Math.random
 
   return (record: LogRecord): boolean => {
-    // Tail sampling checked first — force-keep if any condition matches
     for (const condition of keepWhen) {
       if (condition(record)) {
         return true
       }
     }
 
-    // Head sampling — probabilistic per-level
     const rate = rates[record.level] ?? 1
     if (rate >= 1) return true
     if (rate <= 0) return false

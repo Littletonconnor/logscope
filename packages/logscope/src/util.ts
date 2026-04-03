@@ -1,9 +1,4 @@
 /**
- * Cross-runtime value inspection — browser/default implementation.
- * Uses JSON.stringify with special handling for types it can't serialize.
- */
-
-/**
  * Converts any value into a human-readable string representation.
  * Handles circular references, undefined, BigInt, functions, symbols,
  * and Error objects that JSON.stringify cannot serialize.

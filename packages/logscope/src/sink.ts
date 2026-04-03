@@ -11,7 +11,18 @@ import { toFilter } from './filter.ts'
 export type Sink = (record: LogRecord) => void
 
 /**
- * Options for the console sink.
+ * A sink that supports async disposal and flushing of pending writes.
+ * Assignable to `Sink` everywhere, but exposes extra lifecycle methods.
+ */
+export type DisposableSink = Sink & {
+  /** Waits for all pending async writes to complete. */
+  flush(): Promise<void>
+  /** Async disposal — flushes pending writes. Enables `await using`. */
+  [Symbol.asyncDispose](): Promise<void>
+}
+
+/**
+ * Options for {@link getConsoleSink}.
  */
 export interface ConsoleSinkOptions {
   /**
@@ -22,8 +33,27 @@ export interface ConsoleSinkOptions {
 }
 
 /**
- * Maps log levels to their corresponding console methods.
+ * Options for {@link getNonBlockingConsoleSink}.
  */
+export interface NonBlockingConsoleSinkOptions {
+  /**
+   * A formatter that converts a LogRecord into a string for console output.
+   * If not provided, a simple default format is used.
+   */
+  formatter?: (record: LogRecord) => string
+}
+
+/**
+ * Options for {@link getStreamSink}.
+ */
+export interface StreamSinkOptions {
+  /**
+   * A formatter that converts a LogRecord into a string before writing.
+   * Defaults to the text formatter from `getTextFormatter()`.
+   */
+  formatter?: TextFormatter
+}
+
 const levelToConsoleMethod: Record<LogLevel, 'debug' | 'info' | 'warn' | 'error'> = {
   trace: 'debug',
   debug: 'debug',
@@ -33,24 +63,17 @@ const levelToConsoleMethod: Record<LogLevel, 'debug' | 'info' | 'warn' | 'error'
   fatal: 'error',
 }
 
-/**
- * Default formatter that produces a simple readable string from a LogRecord.
- * Format: "TIMESTAMP [LEVEL] category: message {properties}"
- */
 function defaultFormatter(record: LogRecord): string {
   const timestamp = new Date(record.timestamp).toISOString()
   const level = record.level.toUpperCase()
   const category = record.category.join(' · ')
 
-  // Render the interleaved message array into a string
   const message = record.message
     .map((part) => (typeof part === 'string' ? part : String(part)))
     .join('')
 
-  // Format properties if any exist
   const propKeys = Object.keys(record.properties)
   const props = propKeys.length > 0 ? ` ${JSON.stringify(record.properties)}` : ''
-
   const messagePart = message ? `: ${message}` : ''
 
   return `${timestamp} [${level}] ${category}${messagePart}${props}`
@@ -60,8 +83,7 @@ function defaultFormatter(record: LogRecord): string {
  * Creates a sink that outputs to the console, mapping log levels to the
  * appropriate console method (debug, info, warn, error).
  *
- * Accepts an optional formatter to control the output format.
- * When no formatter is provided, a simple default format is used.
+ * @param options - Optional configuration including a custom formatter.
  */
 export function getConsoleSink(options?: ConsoleSinkOptions): Sink {
   const formatter = options?.formatter ?? defaultFormatter
@@ -72,17 +94,6 @@ export function getConsoleSink(options?: ConsoleSinkOptions): Sink {
     // eslint-disable-next-line no-console
     console[method](output)
   }
-}
-
-/**
- * Options for the non-blocking console sink.
- */
-export interface NonBlockingConsoleSinkOptions {
-  /**
-   * A formatter that converts a LogRecord into a string for console output.
-   * If not provided, a simple default format is used.
-   */
-  formatter?: (record: LogRecord) => string
 }
 
 /**
@@ -158,36 +169,26 @@ export function withFilter(sink: Sink, filter: FilterLike): Sink {
 }
 
 /**
- * A sink that supports async disposal and flushing of pending writes.
- * Assignable to `Sink` everywhere, but exposes extra methods for lifecycle management.
- */
-export type DisposableSink = Sink & {
-  /** Waits for all pending async writes to complete. */
-  flush(): Promise<void>
-  /** Async disposal — flushes pending writes. Enables `await using`. */
-  [Symbol.asyncDispose](): Promise<void>
-}
-
-/**
  * Wraps an async function as a synchronous {@link Sink}.
  *
  * Internally chains promises so that writes execute in order and each
  * write waits for the previous one to finish. Call `flush()` or use
  * `await using` to wait for all pending writes to complete.
- *
- * Errors from the async function will surface as thrown errors on the
- * next sink invocation, which the logger's emit error handling will
- * catch and report to the meta logger.
  */
-/**
- * Options for the stream sink.
- */
-export interface StreamSinkOptions {
-  /**
-   * A formatter that converts a LogRecord into a string before writing.
-   * Defaults to the text formatter from `getTextFormatter()`.
-   */
-  formatter?: TextFormatter
+export function fromAsyncSink(fn: (record: LogRecord) => Promise<void>): DisposableSink {
+  let pending: Promise<void> = Promise.resolve()
+
+  const sink: Sink = (record: LogRecord) => {
+    pending = pending.then(() => fn(record))
+  }
+
+  const disposableSink = sink as DisposableSink
+
+  disposableSink.flush = () => pending
+
+  disposableSink[Symbol.asyncDispose] = () => pending
+
+  return disposableSink
 }
 
 /**
@@ -199,11 +200,9 @@ export interface StreamSinkOptions {
  * `Symbol.asyncDispose` for lifecycle management.
  *
  * Closing the writer (via `flush()` or disposal) does **not** close the
- * underlying stream — the caller retains ownership of the stream.
+ * underlying stream — the caller retains ownership.
  */
 export function getStreamSink(stream: WritableStream, options?: StreamSinkOptions): DisposableSink {
-  // Lazy-load the formatter to avoid circular dependency with formatter.ts at
-  // module evaluation time. The import is cached after the first call.
   let formatter: TextFormatter | undefined = options?.formatter
   let encoder: TextEncoder | undefined
 
@@ -221,7 +220,6 @@ export function getStreamSink(stream: WritableStream, options?: StreamSinkOption
     await writer.write(encoder.encode(text))
   })
 
-  // Wrap flush to also release the writer lock
   const originalFlush = sink.flush
   sink.flush = async () => {
     await originalFlush()
@@ -231,20 +229,4 @@ export function getStreamSink(stream: WritableStream, options?: StreamSinkOption
   sink[Symbol.asyncDispose] = sink.flush
 
   return sink
-}
-
-export function fromAsyncSink(fn: (record: LogRecord) => Promise<void>): DisposableSink {
-  let pending: Promise<void> = Promise.resolve()
-
-  const sink: Sink = (record: LogRecord) => {
-    pending = pending.then(() => fn(record))
-  }
-
-  const disposableSink = sink as DisposableSink
-
-  disposableSink.flush = () => pending
-
-  disposableSink[Symbol.asyncDispose] = () => pending
-
-  return disposableSink
 }

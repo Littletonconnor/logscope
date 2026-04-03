@@ -101,7 +101,6 @@ function sendWithBeacon(endpoint: string, body: string | Blob | ArrayBuffer): bo
   if (typeof navigator === 'undefined' || typeof navigator.sendBeacon !== 'function') {
     return false
   }
-  // sendBeacon accepts string, Blob, ArrayBuffer, or FormData
   return navigator.sendBeacon(endpoint, body as BodyInit)
 }
 
@@ -214,12 +213,8 @@ export function createBrowserDrain(options: BrowserDrainOptions): DisposableSink
     if (useBeaconOnUnload) {
       const accepted = sendWithBeacon(endpoint, body)
       if (!accepted) {
-        // Beacon rejected (too large or unavailable) — try keepalive fetch
         try {
-          // Fire-and-forget: we can't await during unload
-          fetch(endpoint, { method, headers, body, keepalive: true }).catch(() => {
-            // Nothing we can do during unload
-          })
+          fetch(endpoint, { method, headers, body, keepalive: true }).catch(() => {})
         } catch {
           onDropped?.(batch, new Error('Both sendBeacon and keepalive fetch failed during unload'))
         }
@@ -233,8 +228,6 @@ export function createBrowserDrain(options: BrowserDrainOptions): DisposableSink
     }
   }
 
-  // --- Lifecycle event listeners ---
-
   function handleVisibilityChange() {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       clearTimer()
@@ -247,17 +240,13 @@ export function createBrowserDrain(options: BrowserDrainOptions): DisposableSink
     flushSync()
   }
 
-  // Attach listeners if we're in a browser environment
   if (flushOnVisibilityChange && typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', handleVisibilityChange)
   }
 
   if (useBeaconOnUnload && typeof globalThis.addEventListener === 'function') {
-    // `pagehide` is more reliable than `beforeunload` across browsers
     globalThis.addEventListener('pagehide', handlePageHide)
   }
-
-  // --- The sink ---
 
   const sink: Sink = (record: LogRecord) => {
     if (disposed) return
@@ -283,7 +272,6 @@ export function createBrowserDrain(options: BrowserDrainOptions): DisposableSink
     clearTimer()
     disposed = true
 
-    // Remove lifecycle listeners
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
@@ -291,7 +279,6 @@ export function createBrowserDrain(options: BrowserDrainOptions): DisposableSink
       globalThis.removeEventListener('pagehide', handlePageHide)
     }
 
-    // Drain everything remaining
     while (buffer.length > 0) {
       const batch = buffer.splice(0, batchSize)
       pending = pending.then(async () => {

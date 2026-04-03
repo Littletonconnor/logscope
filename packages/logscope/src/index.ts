@@ -1,4 +1,3 @@
-// Level
 export {
   logLevels,
   compareLogLevel,
@@ -8,18 +7,14 @@ export {
 } from './level.ts'
 export type { LogLevel } from './level.ts'
 
-// Record
 export type { LogRecord } from './record.ts'
 
-// Filter
 export { getLevelFilter, toFilter } from './filter.ts'
 export type { Filter, FilterLike } from './filter.ts'
 
-// Sink
 export { getConsoleSink, getNonBlockingConsoleSink, getStreamSink, withFilter, fromAsyncSink } from './sink.ts'
 export type { Sink, DisposableSink, ConsoleSinkOptions, NonBlockingConsoleSinkOptions, StreamSinkOptions } from './sink.ts'
 
-// Formatter
 export {
   renderMessage,
   getTextFormatter,
@@ -37,26 +32,20 @@ export type {
   AutoFormatterOptions,
 } from './formatter.ts'
 
-// Logger
 export { createLogger } from './logger.ts'
 export type { Logger } from './logger.ts'
 
-// Config
 export { configure, reset, dispose, isConfigured, ConfigError } from './config.ts'
 export type { Config, LoggerConfig } from './config.ts'
 
-// Scope
 export type { Scope } from './scope.ts'
 
-// Pipeline
 export { createPipeline } from './pipeline.ts'
 export type { PipelineOptions, BackoffStrategy } from './pipeline.ts'
 
-// Sampling
 export { createSamplingFilter } from './sampling.ts'
 export type { SamplingFilterOptions, TailCondition } from './sampling.ts'
 
-// Fingers Crossed
 export { fingersCrossed, categoryIsolation, propertyIsolation } from './fingersCrossed.ts'
 export type {
   FingersCrossedOptions,
@@ -65,10 +54,8 @@ export type {
   FlushRelated,
 } from './fingersCrossed.ts'
 
-// Context
 export { withContext, withCategoryPrefix } from './context.ts'
 export type { ContextLocalStorage } from './context.ts'
 
-// Browser
 export { createBrowserDrain } from './browser.ts'
 export type { BrowserDrainOptions, RecordSerializer } from './browser.ts'
