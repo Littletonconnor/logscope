@@ -7,25 +7,19 @@ import { compareLogLevel } from './level.ts'
 import { createScope } from './scope.ts'
 import { getImplicitContext, getCategoryPrefix } from './context.ts'
 
-// ---------------------------------------------------------------------------
-// Globals – singleton root via Symbol.for (AD-1)
-// ---------------------------------------------------------------------------
-
 const ROOT_KEY = Symbol.for('logscope.rootLogger')
 
 /**
  * Set of LoggerImpl nodes that have been configured with sinks/filters.
- * Strong references prevent GC from collecting configured loggers (AD-4).
+ * Strong references prevent GC from collecting configured loggers.
+ * @internal
  */
 export const strongRefs: Set<LoggerImpl> = new Set()
 
-// ---------------------------------------------------------------------------
-// LoggerImpl – internal tree node (AD-2)
-// ---------------------------------------------------------------------------
-
 /**
  * Internal tree node that holds sinks, filters, children, and a parent pointer.
- * Not exposed publicly – users interact via Logger / LoggerCtx.
+ * Not exposed publicly — users interact via the {@link Logger} interface.
+ * @internal
  */
 export class LoggerImpl {
   readonly parent: LoggerImpl | null
@@ -41,22 +35,18 @@ export class LoggerImpl {
     this.category = category
   }
 
-  // ---- Child management (AD-4: WeakRef children) ----
-
   /**
    * Gets or creates a child LoggerImpl for the given subcategory.
    * Children are stored as WeakRefs to avoid memory leaks in long-running
-   * processes. Configured loggers are kept alive via strongRefs.
+   * processes. Configured loggers are kept alive via {@link strongRefs}.
    */
   getChild(subcategory: string): LoggerImpl {
     const existing = this.children[subcategory]
 
     if (existing != null) {
-      // If WeakRef is available and used, deref it
       if (existing instanceof WeakRef) {
         const derefed = existing.deref()
         if (derefed != null) return derefed
-        // WeakRef was collected – create a new child
       } else {
         return existing
       }
@@ -73,14 +63,11 @@ export class LoggerImpl {
     return child
   }
 
-  // ---- Sink collection (AD-5: generator-based) ----
-
   /**
-   * Generator that walks up the tree yielding sinks applicable for the
-   * given log level. Parent sinks come first unless parentSinks is "override".
+   * Walks up the tree yielding sinks applicable for the given log level.
+   * Parent sinks come first unless parentSinks is "override".
    */
   *getSinks(level: LogLevel): Iterable<Sink> {
-    // Early exit: if this node's lowestLevel is above the record's level
     if (
       this.lowestLevel !== null &&
       compareLogLevel(level, this.lowestLevel) < 0
@@ -88,16 +75,12 @@ export class LoggerImpl {
       return
     }
 
-    // Walk up: parent sinks first (unless overridden)
     if (this.parent && this.parentSinks === 'inherit') {
       yield* this.parent.getSinks(level)
     }
 
-    // Then this node's own sinks
     yield* this.sinks
   }
-
-  // ---- Filtering (AD-7: filter inheritance) ----
 
   /**
    * Checks whether a record passes filters. If this node has its own
@@ -111,19 +94,15 @@ export class LoggerImpl {
     if (this.parent) {
       return this.parent.filter(record)
     }
-    // No filters anywhere – allow everything
     return true
   }
 
-  // ---- Emit (dispatches to sinks with error handling, AD-6) ----
-
   /**
-   * Dispatches a record to all applicable sinks, with error handling.
-   * Sink errors are caught and logged to the meta logger. A bypassSinks
-   * set prevents infinite recursion when the meta logger's own sinks fail.
+   * Dispatches a record to all applicable sinks. Sink errors are caught
+   * and logged to the meta logger. A bypassSinks set prevents infinite
+   * recursion when the meta logger's own sinks fail.
    */
   emit(record: LogRecord, bypassSinks?: Set<Sink>): void {
-    // Check filters first
     if (!this.filter(record)) return
 
     for (const sink of this.getSinks(record.level)) {
@@ -132,16 +111,11 @@ export class LoggerImpl {
       try {
         sink(record)
       } catch (error) {
-        // Log sink errors to the meta logger (AD-6)
         this.logSinkError(error, sink, record, bypassSinks)
       }
     }
   }
 
-  /**
-   * Logs a sink error to the meta logger ["logscope", "meta"].
-   * Uses bypassSinks to prevent infinite recursion.
-   */
   private logSinkError(
     error: unknown,
     failingSink: Sink,
@@ -171,11 +145,7 @@ export class LoggerImpl {
     metaLogger.emit(metaRecord, bypass)
   }
 
-  // ---- Reset (used by configure/reset) ----
-
-  /**
-   * Recursively clears sinks and filters from this node and all descendants.
-   */
+  /** Recursively clears sinks and filters from this node and all descendants. */
   resetDescendants(): void {
     this.sinks.length = 0
     this.filters.length = 0
@@ -189,7 +159,6 @@ export class LoggerImpl {
         if (derefed) {
           derefed.resetDescendants()
         } else {
-          // WeakRef was collected, clean up the entry
           delete this.children[key]
         }
       } else {
@@ -198,11 +167,9 @@ export class LoggerImpl {
     }
   }
 
-  // ---- Static: navigate the singleton tree ----
-
   /**
-   * Returns the root LoggerImpl, creating it if needed.
-   * Uses Symbol.for to ensure a single root across multiple copies (AD-1).
+   * Returns the singleton root LoggerImpl.
+   * Uses Symbol.for to ensure a single root across multiple copies of the library.
    */
   static getRoot(): LoggerImpl {
     const g = globalThis as Record<symbol, LoggerImpl | undefined>
@@ -214,9 +181,7 @@ export class LoggerImpl {
     return root
   }
 
-  /**
-   * Navigates from root to create/find the LoggerImpl for a category.
-   */
+  /** Navigates from root to create/find the LoggerImpl for a category path. */
   static getLogger(category: readonly string[]): LoggerImpl {
     let node = LoggerImpl.getRoot()
     for (const part of category) {
@@ -226,66 +191,58 @@ export class LoggerImpl {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Logger – public interface (AD-2)
-// ---------------------------------------------------------------------------
-
 /**
  * The public logger interface. Provides log methods at each level,
  * child logger creation, contextual wrappers, and scope creation.
  */
 export interface Logger {
-  /** The logger's category path */
+  /** The logger's category path. */
   readonly category: readonly string[]
 
-  /** Log at trace level */
+  /** Log at trace level. */
   trace(message: string, properties?: Record<string, unknown>): void
   trace(properties: Record<string, unknown>): void
 
-  /** Log at debug level */
+  /** Log at debug level. */
   debug(message: string, properties?: Record<string, unknown>): void
   debug(properties: Record<string, unknown>): void
 
-  /** Log at info level */
+  /** Log at info level. */
   info(message: string, properties?: Record<string, unknown>): void
   info(properties: Record<string, unknown>): void
 
-  /** Log at warning level (alias: warn) */
+  /** Log at warning level. */
   warning(message: string, properties?: Record<string, unknown>): void
   warning(properties: Record<string, unknown>): void
 
-  /** Log at warning level (alias for warning) */
+  /** Alias for {@link Logger.warning | warning}. */
   warn(message: string, properties?: Record<string, unknown>): void
   warn(properties: Record<string, unknown>): void
 
-  /** Log at error level */
+  /** Log at error level. */
   error(message: string, properties?: Record<string, unknown>): void
   error(properties: Record<string, unknown>): void
 
-  /** Log at fatal level */
+  /** Log at fatal level. */
   fatal(message: string, properties?: Record<string, unknown>): void
   fatal(properties: Record<string, unknown>): void
 
-  /** Create a child logger with an additional subcategory */
+  /** Create a child logger with an additional subcategory segment. */
   child(subcategory: string): Logger
 
-  /** Create a contextual wrapper that attaches properties to all logs */
+  /** Create a contextual wrapper that attaches properties to all logs. */
   with(properties: Record<string, unknown>): Logger
 
-  /** Create a scoped wide event that accumulates context and emits once */
+  /** Create a scoped wide event that accumulates context and emits once. */
   scope(initialContext?: Record<string, unknown>): Scope
 
-  /** Check if any sinks exist for the given level */
+  /** Returns true if any sinks would receive a record at the given level. */
   isEnabledFor(level: LogLevel): boolean
 }
 
-// ---------------------------------------------------------------------------
-// LoggerCtx – contextual wrapper (AD-2)
-// ---------------------------------------------------------------------------
-
 /**
  * A thin wrapper around a LoggerImpl that merges extra properties into
- * every log record. Created by Logger.with().
+ * every log record. Created by {@link Logger.with}.
  */
 class LoggerCtx implements Logger {
   private readonly impl: LoggerImpl
@@ -362,7 +319,6 @@ class LoggerCtx implements Logger {
   }
 
   isEnabledFor(level: LogLevel): boolean {
-    // Check if any sinks would receive a record at this level
     for (const _sink of this.impl.getSinks(level)) {
       return true
     }
@@ -388,7 +344,6 @@ class LoggerCtx implements Logger {
       messageProps = messageOrProps
     }
 
-    // Priority: implicit context (lowest) < explicit .with() < message props (highest)
     const implicitCtx = getImplicitContext()
     const mergedProps = implicitCtx
       ? { ...implicitCtx, ...this.properties, ...messageProps }
@@ -407,13 +362,9 @@ class LoggerCtx implements Logger {
   }
 }
 
-// ---------------------------------------------------------------------------
-// DefaultLogger – Logger backed directly by a LoggerImpl
-// ---------------------------------------------------------------------------
-
 /**
  * Default Logger implementation backed by a LoggerImpl tree node.
- * Created by createLogger().
+ * Created by {@link createLogger}.
  */
 class DefaultLogger implements Logger {
   /** @internal */
@@ -514,7 +465,6 @@ class DefaultLogger implements Logger {
       messageProps = messageOrProps
     }
 
-    // Priority: implicit context (lowest) < message props (highest)
     const implicitCtx = getImplicitContext()
     const mergedProps = implicitCtx
       ? { ...implicitCtx, ...messageProps }
@@ -533,20 +483,14 @@ class DefaultLogger implements Logger {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public factory
-// ---------------------------------------------------------------------------
-
 /**
  * Creates a logger for the given category.
  *
- * - String input → `["my-app"]`
- * - Array input → `["my-app", "db"]`
- *
  * When logscope is not configured, all logging calls produce zero output,
  * zero errors, and zero side effects — safe for library authors to use.
- *
  * Multiple calls with the same category share the same internal tree node.
+ *
+ * @param category - A string (`"my-app"`) or array (`["my-app", "db"]`).
  */
 export function createLogger(category: string | readonly string[]): Logger {
   const parts = typeof category === 'string' ? [category] : [...category]

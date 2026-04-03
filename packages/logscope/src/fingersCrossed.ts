@@ -17,9 +17,7 @@ export type AfterTriggerBehavior = 'passthrough' | 'reset'
  *
  * - `"exact"` — only the buffer matching the trigger's key
  * - `"descendants"` — also flush buffers whose key starts with the trigger key
- *   (e.g., trigger on `"app.db"` also flushes `"app.db.queries"`)
  * - `"ancestors"` — also flush buffers that are prefixes of the trigger key
- *   (e.g., trigger on `"app.db"` also flushes `"app"`)
  * - `"both"` — flush both descendants and ancestors
  */
 export type FlushRelated = 'exact' | 'descendants' | 'ancestors' | 'both'
@@ -37,19 +35,20 @@ export interface IsolationOptions {
   key: (record: LogRecord) => string | undefined
   /**
    * Maximum number of isolated buffers to maintain. When exceeded, the
-   * least-recently-used untriggered buffer is evicted (silently dropped).
-   * Default: `1000`.
+   * least-recently-used untriggered buffer is evicted.
+   * @default 1000
    */
   maxContexts?: number
   /**
    * When a trigger fires, which related buffers should also be flushed.
    * Uses prefix matching on buffer keys with the configured `separator`.
-   * Default: `"exact"` (only the matching buffer).
+   * @default "exact"
    */
   flushRelated?: FlushRelated
   /**
    * Separator used for prefix matching in `"descendants"` / `"ancestors"` /
-   * `"both"` flush modes. Default: `"."`.
+   * `"both"` flush modes.
+   * @default "."
    */
   separator?: string
 }
@@ -60,49 +59,37 @@ export interface IsolationOptions {
 export interface FingersCrossedOptions {
   /**
    * Log level at or above which the buffer is flushed and the trigger fires.
-   * Default: `"error"`.
+   * @default "error"
    */
   triggerLevel?: LogLevel
   /**
    * Maximum number of records to buffer per isolated context (or globally
-   * when no isolation is configured). When exceeded, the oldest records are
-   * silently dropped. Default: `1000`.
+   * when no isolation is configured). Oldest records are dropped when exceeded.
+   * @default 1000
    */
   bufferSize?: number
   /**
    * What happens after the trigger fires.
-   *
-   * - `"passthrough"` (default) — all subsequent records are forwarded
-   *   immediately without buffering.
-   * - `"reset"` — the buffer is cleared and buffering resumes until the
-   *   next trigger.
+   * @default "passthrough"
    */
   afterTrigger?: AfterTriggerBehavior
   /**
    * Isolate buffers by a key derived from each record. When set, each
-   * unique key gets its own independent buffer. A trigger in one buffer
-   * does not affect others.
+   * unique key gets its own independent buffer.
    */
   isolation?: IsolationOptions
 }
-
-// ---------------------------------------------------------------------------
-// Isolation helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Creates isolation options that key buffers by the record's category.
  *
  * @param options.depth - How many category segments to use for the key.
- *   `undefined` (default) uses the full category. `1` groups by top-level
- *   category, `2` by the first two segments, etc.
- * @param options.flush - Which related category buffers to also flush on
- *   trigger. Default: `"exact"`.
- * @param options.maxContexts - Max isolated buffers. Default: `1000`.
+ *   `undefined` (default) uses the full category.
+ * @param options.flush - Which related category buffers to also flush on trigger.
+ * @param options.maxContexts - Max isolated buffers.
  *
  * @example
  * ```typescript
- * // Separate buffer per exact category, flush descendants on trigger
  * fingersCrossed(sink, {
  *   isolation: categoryIsolation({ flush: 'descendants' }),
  * })
@@ -132,11 +119,9 @@ export function categoryIsolation(options?: {
  *
  * @param propertyName - The property to extract from `record.properties`.
  * @param options.maxContexts - Max isolated buffers before LRU eviction.
- *   Default: `1000`.
  *
  * @example
  * ```typescript
- * // Per-request buffer — each requestId gets independent buffering
  * fingersCrossed(sink, {
  *   isolation: propertyIsolation('requestId', { maxContexts: 500 }),
  *   afterTrigger: 'reset',
@@ -157,18 +142,10 @@ export function propertyIsolation(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Internal buffer context
-// ---------------------------------------------------------------------------
-
 interface BufferContext {
   records: LogRecord[]
   triggered: boolean
 }
-
-// ---------------------------------------------------------------------------
-// Key matching
-// ---------------------------------------------------------------------------
 
 function shouldFlush(
   triggerKey: string,
@@ -179,22 +156,14 @@ function shouldFlush(
   if (triggerKey === candidateKey) return true
   if (mode === 'exact') return false
 
-  const isDescendant =
-    candidateKey.startsWith(triggerKey + separator)
-  const isAncestor =
-    triggerKey.startsWith(candidateKey + separator)
+  const isDescendant = candidateKey.startsWith(triggerKey + separator)
+  const isAncestor = triggerKey.startsWith(candidateKey + separator)
 
   if (mode === 'descendants') return isDescendant
   if (mode === 'ancestors') return isAncestor
-  // 'both'
   return isDescendant || isAncestor
 }
 
-// ---------------------------------------------------------------------------
-// LRU Map helpers
-// ---------------------------------------------------------------------------
-
-/** Move a key to the end of the Map (most recently used). */
 function touch<V>(map: Map<string, V>, key: string): void {
   const value = map.get(key)
   if (value !== undefined) {
@@ -203,38 +172,29 @@ function touch<V>(map: Map<string, V>, key: string): void {
   }
 }
 
-/** Evict the oldest untriggered context. If all are triggered, evict the oldest overall. */
 function evictOldest(contexts: Map<string, BufferContext>): void {
-  // Prefer evicting untriggered (they haven't been useful yet)
   for (const [key, ctx] of contexts) {
     if (!ctx.triggered) {
       contexts.delete(key)
       return
     }
   }
-  // All triggered — evict the oldest
   const firstKey = contexts.keys().next().value
   if (firstKey !== undefined) {
     contexts.delete(firstKey)
   }
 }
 
-// ---------------------------------------------------------------------------
-// Main implementation
-// ---------------------------------------------------------------------------
-
 /**
  * Creates a "fingers crossed" sink that silently buffers log records until a
  * record at or above the `triggerLevel` arrives. When triggered, the entire
- * buffer is flushed to the wrapped `sink`, followed by the trigger record
- * itself.
+ * buffer is flushed to the wrapped sink, followed by the trigger record itself.
  *
- * This is useful in production when you want debug-level context only when
- * an error actually occurs — quiet normal operation, full context on failure.
+ * Useful in production when you want debug-level context only when an error
+ * actually occurs — quiet normal operation, full context on failure.
  *
  * When `isolation` is configured, each unique key gets its own independent
- * buffer. A trigger in one buffer does not affect others. Use
- * {@link categoryIsolation} for per-category buffers or
+ * buffer. Use {@link categoryIsolation} for per-category buffers or
  * {@link propertyIsolation} for per-request/context buffers.
  *
  * @example
@@ -243,11 +203,6 @@ function evictOldest(contexts: Map<string, BufferContext>): void {
  * const sink = fingersCrossed(getConsoleSink(), {
  *   triggerLevel: 'error',
  *   bufferSize: 500,
- * })
- *
- * // Per-category with descendant flushing
- * const sink = fingersCrossed(getConsoleSink(), {
- *   isolation: categoryIsolation({ flush: 'descendants' }),
  * })
  *
  * // Per-request with LRU eviction
@@ -263,9 +218,6 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
   const afterTrigger: AfterTriggerBehavior = options.afterTrigger ?? 'passthrough'
   const isolation = options.isolation
 
-  // -----------------------------------------------------------------------
-  // Non-isolated mode (original behavior — single global buffer)
-  // -----------------------------------------------------------------------
   if (!isolation) {
     const buffer: LogRecord[] = []
     let triggered = false
@@ -298,15 +250,11 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Isolated mode — separate buffer per key
-  // -----------------------------------------------------------------------
   const keyFn = isolation.key
   const maxContexts = isolation.maxContexts ?? 1000
   const flushRelated: FlushRelated = isolation.flushRelated ?? 'exact'
   const separator = isolation.separator ?? '.'
   const contexts = new Map<string, BufferContext>()
-  // Fallback buffer for records where key returns undefined
   const fallback: BufferContext = { records: [], triggered: false }
 
   function getOrCreate(key: string): BufferContext {
@@ -316,7 +264,6 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
       return ctx
     }
 
-    // Evict if at capacity
     if (contexts.size >= maxContexts) {
       evictOldest(contexts)
     }
@@ -346,14 +293,12 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
 
     const isAtOrAboveTrigger = compareLogLevel(record.level, triggerLevel) >= 0
 
-    // Passthrough after trigger for this context
     if (ctx.triggered && afterTrigger === 'passthrough') {
       sink(record)
       return
     }
 
     if (isAtOrAboveTrigger) {
-      // Flush the triggering context
       flushContext(ctx)
       sink(record)
 
@@ -361,7 +306,6 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
         ctx.triggered = true
       }
 
-      // Flush related contexts if configured
       if (key !== undefined && flushRelated !== 'exact') {
         for (const [candidateKey, candidateCtx] of contexts) {
           if (candidateKey === key) continue
@@ -376,7 +320,6 @@ export function fingersCrossed(sink: Sink, options: FingersCrossedOptions = {}):
       return
     }
 
-    // Below trigger level — buffer the record
     bufferRecord(ctx, record)
   }
 }

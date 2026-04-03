@@ -9,7 +9,7 @@ export type TextFormatter = (record: LogRecord) => string
 /**
  * Renders the interleaved message array into a plain string.
  * Strings at even indices are used as-is, values at odd indices
- * are converted via inspect().
+ * are converted via {@link inspect}.
  */
 export function renderMessage(record: LogRecord): string {
   if (record.message.length === 0) return record.rawMessage
@@ -19,7 +19,7 @@ export function renderMessage(record: LogRecord): string {
 }
 
 /**
- * Options for the text formatter.
+ * Options for {@link getTextFormatter}.
  */
 export interface TextFormatterOptions {
   /**
@@ -37,8 +37,10 @@ export interface TextFormatterOptions {
 /**
  * Creates a text formatter that produces human-readable output.
  *
- * Default format:
- *   2024-01-15T10:30:00.000Z [INFO] my-app · db: query executed {table: "users", ms: 42}
+ * @example
+ * ```
+ * 2024-01-15T10:30:00.000Z [INFO] my-app · db: query executed {table: "users", ms: 42}
+ * ```
  */
 export function getTextFormatter(options?: TextFormatterOptions): TextFormatter {
   const separator = options?.categorySeparator ?? ' \u00b7 '
@@ -73,9 +75,6 @@ export function getTextFormatter(options?: TextFormatterOptions): TextFormatter 
   }
 }
 
-/**
- * Format properties as a compact readable string: {key: value, key2: value2}
- */
 function formatProperties(properties: Record<string, unknown>): string {
   const entries = Object.entries(properties)
     .map(([key, value]) => `${key}: ${inspect(value)}`)
@@ -84,7 +83,7 @@ function formatProperties(properties: Record<string, unknown>): string {
 }
 
 /**
- * Options for the JSON formatter.
+ * Options for {@link getJsonFormatter}.
  */
 export interface JsonFormatterOptions {
   /**
@@ -97,8 +96,10 @@ export interface JsonFormatterOptions {
 /**
  * Creates a formatter that produces NDJSON (one JSON object per line).
  *
- * Output format:
- *   {"@timestamp":"...","level":"INFO","logger":"my-app.db","message":"...","properties":{...}}
+ * @example
+ * ```json
+ * {"@timestamp":"...","level":"INFO","logger":"my-app.db","message":"...","properties":{...}}
+ * ```
  */
 export function getJsonFormatter(options?: JsonFormatterOptions): TextFormatter {
   const separator = options?.categorySeparator ?? '.'
@@ -124,9 +125,6 @@ export function getJsonFormatter(options?: JsonFormatterOptions): TextFormatter 
   }
 }
 
-/**
- * Recursively serialize properties, handling Error objects specially.
- */
 function serializeProperties(
   properties: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -153,7 +151,6 @@ function serializeValue(value: unknown): unknown {
   return value
 }
 
-// ANSI escape codes
 const RESET = '\x1b[0m'
 const BOLD = '\x1b[1m'
 const DIM = '\x1b[2m'
@@ -174,7 +171,7 @@ const LEVEL_COLORS: Record<string, string> = {
 }
 
 /**
- * Options for the ANSI color formatter.
+ * Options for {@link getAnsiColorFormatter}.
  */
 export interface AnsiColorFormatterOptions {
   /**
@@ -187,8 +184,8 @@ export interface AnsiColorFormatterOptions {
 /**
  * Creates a formatter with colored terminal output using raw ANSI escape codes.
  *
- * Level colors: trace=gray, debug=cyan, info=green, warning=yellow, error=red, fatal=red+bold
- * Timestamp in dim, category in bold.
+ * Level colors: trace=gray, debug=cyan, info=green, warning=yellow,
+ * error=red, fatal=red+bold. Timestamp in dim, category in bold.
  */
 export function getAnsiColorFormatter(
   options?: AnsiColorFormatterOptions,
@@ -223,12 +220,8 @@ export function getAnsiColorFormatter(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Pretty Dev Formatter — tree-formatted wide event output
-// ---------------------------------------------------------------------------
-
 /**
- * Options for the pretty dev formatter.
+ * Options for {@link getPrettyFormatter}.
  */
 export interface PrettyFormatterOptions {
   /**
@@ -243,11 +236,6 @@ export interface PrettyFormatterOptions {
   maxDepth?: number
 }
 
-/**
- * Renders an object value as a tree with box-drawing prefixes.
- * Each line is indented with the given prefix. Last items use `└── `,
- * others use `├── `, and continuation lines use `│   ` or `    `.
- */
 function renderTree(
   obj: Record<string, unknown>,
   prefix: string,
@@ -291,10 +279,6 @@ function renderTree(
   return lines
 }
 
-/**
- * Renders a value for pretty output — keeps primitives readable,
- * uses inspect() for complex leaf values.
- */
 function renderPrettyValue(value: unknown): string {
   if (value === null) return `${DIM}null${RESET}`
   if (value === undefined) return `${DIM}undefined${RESET}`
@@ -311,17 +295,20 @@ function renderPrettyValue(value: unknown): string {
     }
     return parts.join('\n')
   }
-  if (Array.isArray(value)) return inspect(value)
   return inspect(value)
+}
+
+function isPrimitive(value: unknown): boolean {
+  return value === null || value === undefined || typeof value !== 'object'
 }
 
 /**
  * Creates a pretty formatter for dev-friendly terminal output.
  *
  * Renders wide events (scope emits with many properties) as a visual tree
- * with box-drawing characters (`├──`, `└──`). Regular log messages get
- * colored output similar to {@link getAnsiColorFormatter} but with the
- * properties rendered as an indented tree below the header line.
+ * with box-drawing characters. Regular log messages get colored output
+ * similar to {@link getAnsiColorFormatter} but with the properties
+ * rendered as an indented tree below the header line.
  *
  * Best used in development. For production, prefer {@link getJsonFormatter}.
  *
@@ -358,7 +345,6 @@ export function getPrettyFormatter(
       return header
     }
 
-    // For small property sets (≤ 3 keys, all primitives), use inline format
     if (propKeys.length <= 3 && propKeys.every((k) => isPrimitive(record.properties[k]))) {
       const inline = propKeys
         .map((k) => `${DIM}${k}=${RESET}${renderPrettyValue(record.properties[k])}`)
@@ -366,22 +352,13 @@ export function getPrettyFormatter(
       return `${header} ${inline}`
     }
 
-    // For larger/nested properties, render as a tree
     const treeLines = renderTree(record.properties, '', 0, maxDepth)
     return [header, ...treeLines].join('\n')
   }
 }
 
-function isPrimitive(value: unknown): boolean {
-  return value === null || value === undefined || typeof value !== 'object'
-}
-
-// ---------------------------------------------------------------------------
-// Auto Formatter — dev/prod detection
-// ---------------------------------------------------------------------------
-
 /**
- * Options for the auto formatter.
+ * Options for {@link getAutoFormatter}.
  */
 export interface AutoFormatterOptions {
   /**
@@ -389,13 +366,9 @@ export interface AutoFormatterOptions {
    * checks `NODE_ENV` for `"production"`.
    */
   production?: boolean
-  /**
-   * Options forwarded to {@link getPrettyFormatter} in dev mode.
-   */
+  /** Options forwarded to {@link getPrettyFormatter} in dev mode. */
   pretty?: PrettyFormatterOptions
-  /**
-   * Options forwarded to {@link getJsonFormatter} in prod mode.
-   */
+  /** Options forwarded to {@link getJsonFormatter} in prod mode. */
   json?: JsonFormatterOptions
 }
 
@@ -403,11 +376,8 @@ export interface AutoFormatterOptions {
  * Creates a formatter that automatically selects pretty output in development
  * and JSON output in production.
  *
- * Detection logic:
- * - If `options.production` is explicitly set, uses that.
- * - Otherwise checks `process.env.NODE_ENV === "production"` (Node/Bun)
- *   or `Deno.env.get("DENO_ENV") === "production"` (Deno).
- * - Defaults to dev (pretty) when detection fails.
+ * Detection: checks `process.env.NODE_ENV` (Node/Bun) or
+ * `Deno.env.get("DENO_ENV")` (Deno). Defaults to dev when detection fails.
  *
  * @example
  * ```ts
@@ -426,7 +396,6 @@ export function getAutoFormatter(options?: AutoFormatterOptions): TextFormatter 
 
 function detectProduction(): boolean {
   try {
-    // Node.js / Bun
     if (typeof process !== 'undefined' && process.env) {
       return process.env.NODE_ENV === 'production'
     }
@@ -434,7 +403,6 @@ function detectProduction(): boolean {
     // process may throw in restricted environments
   }
   try {
-    // Deno
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = (globalThis as any).Deno
     if (d?.env?.get) {

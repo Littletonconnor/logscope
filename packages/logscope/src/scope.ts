@@ -3,38 +3,30 @@ import type { LogRecord } from './record.ts'
 import type { LoggerImpl } from './logger.ts'
 import { getImplicitContext } from './context.ts'
 
-// ---------------------------------------------------------------------------
-// Scope – accumulate-then-emit wide events (AD-9)
-// ---------------------------------------------------------------------------
-
 /**
  * A scope accumulates structured context over a unit of work (e.g., an HTTP
  * request) and emits a single wide event at the end. This combines logtape's
  * library-first architecture with evlog's wide event model.
  */
 export interface Scope {
-  /** Deep-merge data into the accumulated context (new values win) */
+  /** Deep-merge data into the accumulated context (new values win). */
   set(data: Record<string, unknown>): void
 
-  /** Record an error — sets the scope level to error on emit */
+  /** Record an error — sets the scope level to error on emit. */
   error(error: Error | string, context?: Record<string, unknown>): void
 
-  /** Record a warning — sets the scope level to warning on emit (if no error) */
+  /** Record a warning — sets the scope level to warning on emit (if no error). */
   warn(message: string, context?: Record<string, unknown>): void
 
-  /** Record an informational sub-event */
+  /** Record an informational sub-event. */
   info(message: string, context?: Record<string, unknown>): void
 
-  /** Emit the accumulated wide event as a single LogRecord */
+  /** Emit the accumulated wide event as a single LogRecord. */
   emit(overrides?: Record<string, unknown>): void
 
-  /** Returns a snapshot (clone) of the current accumulated context */
+  /** Returns a snapshot (clone) of the current accumulated context. */
   getContext(): Record<string, unknown>
 }
-
-// ---------------------------------------------------------------------------
-// deepMerge – recursive merge where source wins (AD-9)
-// ---------------------------------------------------------------------------
 
 /**
  * Deep-merges `source` into `target`, returning a new object.
@@ -51,20 +43,12 @@ export function deepMerge(
 
   for (const key of Object.keys(source)) {
     const sourceVal = source[key]
-
-    // Skip null/undefined — don't overwrite existing data with nothing
     if (sourceVal == null) continue
 
     const targetVal = result[key]
 
-    if (
-      isPlainObject(sourceVal) &&
-      isPlainObject(targetVal)
-    ) {
-      result[key] = deepMerge(
-        targetVal as Record<string, unknown>,
-        sourceVal as Record<string, unknown>,
-      )
+    if (isPlainObject(sourceVal) && isPlainObject(targetVal)) {
+      result[key] = deepMerge(targetVal, sourceVal)
     } else {
       result[key] = sourceVal
     }
@@ -73,18 +57,13 @@ export function deepMerge(
   return result
 }
 
-function isPlainObject(value: unknown): boolean {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null) return false
   if (Array.isArray(value)) return false
   const proto = Object.getPrototypeOf(value) as unknown
   return proto === Object.prototype || proto === null
 }
 
-// ---------------------------------------------------------------------------
-// ScopeImpl – internal implementation
-// ---------------------------------------------------------------------------
-
-/** A sub-event recorded within a scope via .info(), .warn(), or .error() */
 interface ScopeLog {
   level: LogLevel
   message: string
@@ -95,6 +74,7 @@ interface ScopeLog {
 /**
  * Creates a Scope that accumulates context and emits through the given
  * LoggerImpl. Called internally by Logger.scope().
+ * @internal
  */
 export function createScope(
   impl: LoggerImpl,
@@ -170,13 +150,10 @@ export function createScope(
     emit(overrides?: Record<string, unknown>): void {
       const duration = Date.now() - startTime
 
-      // Determine level: error > warning > info
       let level: LogLevel = 'info'
       if (hasError) level = 'error'
       else if (hasWarn) level = 'warning'
 
-      // Build final properties
-      // Priority: implicit context (lowest) < logger .with() < scope context (highest)
       const implicitCtx = getImplicitContext()
       let properties: Record<string, unknown> = {
         ...(implicitCtx ?? {}),
