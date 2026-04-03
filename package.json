@@ -20,7 +20,8 @@
     "example:03": "pnpm --filter example-hono dev",
     "example:04": "pnpm --filter example-express dev",
     "example:05": "pnpm --filter example-next dev",
-    "example:06": "pnpm --filter example-nitro dev"
+    "example:06": "pnpm --filter example-nitro dev",
+    "example:07": "pnpm --filter example-browser dev"
   },
   "repository": {
     "type": "git",
