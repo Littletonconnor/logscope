@@ -123,6 +123,24 @@ importers:
         specifier: ^6.3.5
         version: 6.4.1(@types/node@25.3.0)(jiti@2.6.1)(terser@5.46.1)
 
+  examples/08-axiom:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.3
+        version: 1.19.12(hono@4.12.9)
+      '@logscope/axiom':
+        specifier: workspace:*
+        version: link:../../packages/axiom
+      '@logscope/hono':
+        specifier: workspace:*
+        version: link:../../packages/hono
+      hono:
+        specifier: ^4.7.11
+        version: 4.12.9
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+
   packages/axiom:
     devDependencies:
       logscope:
