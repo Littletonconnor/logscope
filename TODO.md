@@ -917,9 +917,9 @@ These apply to all examples:
 - [x] Add `examples/*` to `pnpm-workspace.yaml` so workspace linking works
 - [x] Root `package.json` script: `"example:01": "pnpm --filter example-core-basics dev"`, etc.
 - [x] Each example's `package.json` uses `"logscope": "workspace:*"` (and `"@logscope/*": "workspace:*"` as needed)
-- [ ] Each example has a `tsconfig.json` extending root or standalone
-- [ ] Verify every example builds and runs after `pnpm install && pnpm build` from root
-- [ ] Add a root-level `examples/README.md` with a table of all examples, ports, and what they demonstrate
+- [x] Each example has a `tsconfig.json` extending root or standalone
+- [x] Verify every example builds and runs after `pnpm install && pnpm build` from root
+- [x] Add a root-level `examples/README.md` with a table of all examples, ports, and what they demonstrate
 
 ---
 
