@@ -859,25 +859,25 @@ A Hono server that sends logs to a mock Axiom ingest endpoint.
 
 A Hono server that exports logs via OTLP HTTP/JSON to a mock collector.
 
-- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/otlp`
-- [ ] `README.md` explaining OTLP integration
-- [ ] `src/app.ts` — Hono app:
-  - [ ] `createOtlpExporter()` with resource attributes (`service.name`, `service.version`, `deployment.environment`)
-  - [ ] Routes that generate logs at various levels
-  - [ ] Console sink in parallel
-- [ ] `src/mock-collector.ts` — mock OTLP collector:
-  - [ ] `POST /v1/logs` — accepts OTLP JSON payload, pretty-prints:
+- [x] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/otlp`
+- [x] `README.md` explaining OTLP integration
+- [x] `src/app.ts` — Hono app:
+  - [x] `createOtlpExporter()` with resource attributes (`service.name`, `service.version`, `deployment.environment`)
+  - [x] Routes that generate logs at various levels
+  - [x] Console sink in parallel
+- [x] `src/mock-collector.ts` — mock OTLP collector:
+  - [x] `POST /v1/logs` — accepts OTLP JSON payload, pretty-prints:
     - Resource attributes
     - Scope logs
     - Individual log records with severity, body, attributes
-  - [ ] Runs on port **3107**
-- [ ] `src/index.ts` — starts both
-- [ ] Demonstrates:
-  - [ ] OTLP log record format (severity number, body, attributes, resource)
-  - [ ] Resource attribute propagation (`service.name` appears on every record)
-  - [ ] Batched export behavior
-  - [ ] Custom headers for authentication
-- [ ] Runs via: `pnpm dev` → app on port **3007**, mock collector on port **3107**
+  - [x] Runs on port **3107**
+- [x] `src/index.ts` — starts both
+- [x] Demonstrates:
+  - [x] OTLP log record format (severity number, body, attributes, resource)
+  - [x] Resource attribute propagation (`service.name` appears on every record)
+  - [x] Batched export behavior
+  - [x] Custom headers for authentication
+- [x] Runs via: `pnpm dev` → app on port **3007**, mock collector on port **3107**
 
 ---
 
@@ -885,28 +885,28 @@ A Hono server that exports logs via OTLP HTTP/JSON to a mock collector.
 
 A Hono server that sends error logs to a mock Sentry endpoint.
 
-- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/sentry`
-- [ ] `README.md` explaining Sentry integration
-- [ ] `src/app.ts` — Hono app:
-  - [ ] `createSentrySink()` configured with a mock DSN pointing at the local mock server
-  - [ ] Only error/fatal logs sent to Sentry (use `withFilter` or level config)
-  - [ ] Console sink for all levels in parallel
-  - [ ] Routes: normal request, error with stack trace, error with cause chain, warning (not sent to Sentry)
-- [ ] `src/mock-sentry.ts` — mock Sentry envelope endpoint:
-  - [ ] `POST /api/:projectId/envelope/` — parses Sentry envelope format:
+- [x] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/sentry`
+- [x] `README.md` explaining Sentry integration
+- [x] `src/app.ts` — Hono app:
+  - [x] `createSentrySink()` configured with a mock DSN pointing at the local mock server
+  - [x] Only error/fatal logs sent to Sentry (use `withFilter` or level config)
+  - [x] Console sink for all levels in parallel
+  - [x] Routes: normal request, error with stack trace, error with cause chain, warning (not sent to Sentry)
+- [x] `src/mock-sentry.ts` — mock Sentry envelope endpoint:
+  - [x] `POST /api/:projectId/envelope/` — parses Sentry envelope format:
     - Event header (event_id, dsn, timestamp)
     - Item header (type, length)
     - Event payload (exception values, stack frames, tags, contexts)
-  - [ ] Pretty-prints parsed exception info, stack frames, tags
-  - [ ] Runs on port **3108**
-- [ ] `src/index.ts` — starts both
-- [ ] Demonstrates:
-  - [ ] Error-only sink filtering (info/warn don't go to Sentry)
-  - [ ] Stack trace parsing and frame extraction
-  - [ ] Error cause chains (nested errors)
-  - [ ] Environment and release tags
-  - [ ] Sentry envelope wire format
-- [ ] Runs via: `pnpm dev` → app on port **3008**, mock Sentry on port **3108**
+  - [x] Pretty-prints parsed exception info, stack frames, tags
+  - [x] Runs on port **3108**
+- [x] `src/index.ts` — starts both
+- [x] Demonstrates:
+  - [x] Error-only sink filtering (info/warn don't go to Sentry)
+  - [x] Stack trace parsing and frame extraction
+  - [x] Error cause chains (nested errors)
+  - [x] Environment and release tags
+  - [x] Sentry envelope wire format
+- [x] Runs via: `pnpm dev` → app on port **3008**, mock Sentry on port **3108**
 
 ---
 
@@ -916,7 +916,7 @@ These apply to all examples:
 
 - [x] Add `examples/*` to `pnpm-workspace.yaml` so workspace linking works
 - [x] Root `package.json` script: `"example:01": "pnpm --filter example-core-basics dev"`, etc.
-- [ ] Each example's `package.json` uses `"logscope": "workspace:*"` (and `"@logscope/*": "workspace:*"` as needed)
+- [x] Each example's `package.json` uses `"logscope": "workspace:*"` (and `"@logscope/*": "workspace:*"` as needed)
 - [ ] Each example has a `tsconfig.json` extending root or standalone
 - [ ] Verify every example builds and runs after `pnpm install && pnpm build` from root
 - [ ] Add a root-level `examples/README.md` with a table of all examples, ports, and what they demonstrate
