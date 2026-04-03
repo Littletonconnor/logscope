@@ -803,30 +803,30 @@ A standalone Nitro server (no full Nuxt) with the logscope plugin.
 
 A Vite SPA that logs to a local mock ingest endpoint, demonstrating browser-specific features.
 
-- [ ] `package.json` with `vite`, `logscope`
-- [ ] `README.md` explaining browser drain behavior
-- [ ] `src/index.html` — simple HTML page with buttons:
-  - [ ] "Log Info" button — fires `log.info()`
-  - [ ] "Log Error" button — fires `log.error()`
-  - [ ] "Start Scope" / "Add Context" / "Emit Scope" buttons — interactive scope demo
-  - [ ] "Switch Tab" instruction — demonstrates visibility change auto-flush
-  - [ ] Visual log output panel showing what's been sent to the mock endpoint
-- [ ] `src/main.ts` — browser entry point:
-  - [ ] `configure()` with `createBrowserDrain({ endpoint: '/api/ingest' })`
-  - [ ] Also configure a console sink so logs appear in DevTools
-  - [ ] `createLogger('browser-app')`
-  - [ ] Wire up button event listeners
-- [ ] `server.ts` — tiny Node.js HTTP server (or Vite plugin) that:
-  - [ ] Serves the SPA
-  - [ ] `POST /api/ingest` — mock endpoint that pretty-prints received log batches to terminal
-  - [ ] Shows batch size, timing, and individual log records
-- [ ] Demonstrates:
-  - [ ] `createBrowserDrain` batching (logs buffer, flush on interval)
-  - [ ] `sendBeacon` fallback on page unload (instruct user to close tab, observe server output)
-  - [ ] `flushOnVisibilityChange` (instruct user to switch tabs)
-  - [ ] `keepalive: true` fetch behavior
-  - [ ] Console sink in parallel so DevTools also shows logs
-- [ ] Runs via: `pnpm dev` → Vite dev server on port **3005**
+- [x] `package.json` with `vite`, `logscope`
+- [x] `README.md` explaining browser drain behavior
+- [x] `src/index.html` — simple HTML page with buttons:
+  - [x] "Log Info" button — fires `log.info()`
+  - [x] "Log Error" button — fires `log.error()`
+  - [x] "Start Scope" / "Add Context" / "Emit Scope" buttons — interactive scope demo
+  - [x] "Switch Tab" instruction — demonstrates visibility change auto-flush
+  - [x] Visual log output panel showing what's been sent to the mock endpoint
+- [x] `src/main.ts` — browser entry point:
+  - [x] `configure()` with `createBrowserDrain({ endpoint: '/api/ingest' })`
+  - [x] Also configure a console sink so logs appear in DevTools
+  - [x] `createLogger('browser-app')`
+  - [x] Wire up button event listeners
+- [x] `server.ts` — tiny Node.js HTTP server (or Vite plugin) that:
+  - [x] Serves the SPA
+  - [x] `POST /api/ingest` — mock endpoint that pretty-prints received log batches to terminal
+  - [x] Shows batch size, timing, and individual log records
+- [x] Demonstrates:
+  - [x] `createBrowserDrain` batching (logs buffer, flush on interval)
+  - [x] `sendBeacon` fallback on page unload (instruct user to close tab, observe server output)
+  - [x] `flushOnVisibilityChange` (instruct user to switch tabs)
+  - [x] `keepalive: true` fetch behavior
+  - [x] Console sink in parallel so DevTools also shows logs
+- [x] Runs via: `pnpm dev` → Vite dev server on port **3005**
 
 ---
 
