@@ -22,7 +22,9 @@
     "example:05": "pnpm --filter example-next dev",
     "example:06": "pnpm --filter example-nitro dev",
     "example:07": "pnpm --filter example-browser dev",
-    "example:08": "pnpm --filter example-axiom dev"
+    "example:08": "pnpm --filter example-axiom dev",
+    "example:09": "pnpm --filter example-otlp dev",
+    "example:10": "pnpm --filter example-sentry dev"
   },
   "repository": {
     "type": "git",

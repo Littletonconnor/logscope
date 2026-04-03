@@ -141,6 +141,42 @@ importers:
         specifier: workspace:*
         version: link:../../packages/logscope
 
+  examples/09-otlp:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.3
+        version: 1.19.12(hono@4.12.9)
+      '@logscope/hono':
+        specifier: workspace:*
+        version: link:../../packages/hono
+      '@logscope/otlp':
+        specifier: workspace:*
+        version: link:../../packages/otlp
+      hono:
+        specifier: ^4.7.11
+        version: 4.12.9
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+
+  examples/10-sentry:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.3
+        version: 1.19.12(hono@4.12.9)
+      '@logscope/hono':
+        specifier: workspace:*
+        version: link:../../packages/hono
+      '@logscope/sentry':
+        specifier: workspace:*
+        version: link:../../packages/sentry
+      hono:
+        specifier: ^4.7.11
+        version: 4.12.9
+      logscope:
+        specifier: workspace:*
+        version: link:../../packages/logscope
+
   packages/axiom:
     devDependencies:
       logscope:
