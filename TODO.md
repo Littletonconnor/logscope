@@ -834,24 +834,24 @@ A Vite SPA that logs to a local mock ingest endpoint, demonstrating browser-spec
 
 A Hono server that sends logs to a mock Axiom ingest endpoint.
 
-- [ ] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/axiom`
-- [ ] `README.md` explaining Axiom integration
-- [ ] `src/app.ts` — Hono app with logscope middleware:
-  - [ ] Routes that generate various log levels
-  - [ ] `createAxiomSink()` configured to point at the mock endpoint
-  - [ ] Console sink in parallel so you can see logs in terminal too
-- [ ] `src/mock-axiom.ts` — mock Axiom ingest server:
-  - [ ] `POST /v1/datasets/:dataset/ingest` — accepts and pretty-prints Axiom-formatted events
-  - [ ] Validates auth header format
-  - [ ] Shows batch size, timestamps, mapped fields
-  - [ ] Runs on port **3106**
-- [ ] `src/index.ts` — starts both the app and mock server
-- [ ] Demonstrates:
-  - [ ] Batched export (logs buffer, flush every N seconds or N records)
-  - [ ] Axiom event format (mapped fields: `_time`, `level`, `logger`, etc.)
-  - [ ] Retry on failure (kill mock server, send requests, restart mock — see retry behavior)
-  - [ ] `onDropped` callback when buffer overflows
-- [ ] Runs via: `pnpm dev` → app on port **3006**, mock Axiom on port **3106**
+- [x] `package.json` with `hono`, `@hono/node-server`, `logscope`, `@logscope/hono`, `@logscope/axiom`
+- [x] `README.md` explaining Axiom integration
+- [x] `src/app.ts` — Hono app with logscope middleware:
+  - [x] Routes that generate various log levels
+  - [x] `createAxiomSink()` configured to point at the mock endpoint
+  - [x] Console sink in parallel so you can see logs in terminal too
+- [x] `src/mock-axiom.ts` — mock Axiom ingest server:
+  - [x] `POST /v1/datasets/:dataset/ingest` — accepts and pretty-prints Axiom-formatted events
+  - [x] Validates auth header format
+  - [x] Shows batch size, timestamps, mapped fields
+  - [x] Runs on port **3106**
+- [x] `src/index.ts` — starts both the app and mock server
+- [x] Demonstrates:
+  - [x] Batched export (logs buffer, flush every N seconds or N records)
+  - [x] Axiom event format (mapped fields: `_time`, `level`, `logger`, etc.)
+  - [x] Retry on failure (kill mock server, send requests, restart mock — see retry behavior)
+  - [x] `onDropped` callback when buffer overflows
+- [x] Runs via: `pnpm dev` → app on port **3006**, mock Axiom on port **3106**
 
 ---
 
